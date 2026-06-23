@@ -115,149 +115,188 @@ export default function ProductsPage() {
             description="Discover high-quality diagnostic and biomedical technologies tailored for laboratories, healthcare institutions, and modern diagnostics."
             center
           />
-          <div className="max-w-xl mx-auto mt-10 relative">
+
+          {/* Search Box */}
+          <div className="max-w-2xl mx-auto mt-10 relative">
             <Search
-              size={20}
-              className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"
+              size={22}
+              className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400"
             />
 
             <input
               type="text"
-              placeholder="Search Product..."
+              placeholder="Search products by name, brand or model..."
               value={search}
               onChange={(e) => {
                 setSearch(e.target.value);
                 setCurrentPage(1);
               }}
-              className="w-full pl-12 pr-4 py-4 border rounded-2xl"
+              className="w-full h-16 pl-14 pr-5 rounded-2xl border border-slate-200 bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
             />
           </div>
-          {/* Product Grid */}
-          <div className="grid xl:grid-cols-3 lg:grid-cols-3 md:grid-cols-2 grid-cols-1 gap-8 mt-16">
 
-            {paginatedProducts.map((product, index) => (
-              <div
-                key={index}
-                className="bg-white rounded-[32px] overflow-hidden border border-slate-100 card-shadow hover:-translate-y-2 transition-all duration-300 flex flex-col h-full"
-              >
+          {filteredProducts.length > 0 ? (
+            <>
+              {/* Product Grid */}
+              <div className="grid xl:grid-cols-3 lg:grid-cols-3 md:grid-cols-2 grid-cols-1 gap-8 mt-16">
 
-                {/* Image */}
-                <div className="relative h-[260px] bg-gray-100 overflow-hidden">
+                {paginatedProducts.map((product, index) => (
+                  <div
+                    key={index}
+                    className="bg-white rounded-[32px] overflow-hidden border border-slate-100 card-shadow hover:-translate-y-2 transition-all duration-300 flex flex-col h-full"
+                  >
 
-                  {!loadedImages[index] && (
-                    <div className="absolute inset-0 animate-pulse bg-gray-200" />
-                  )}
+                    {/* Image */}
+                    <div className="relative h-[260px] bg-gray-100 overflow-hidden">
 
-                  <Image
-                    src={product.image || "/placeholder.jpg"}
-                    alt={product.title}
-                    fill
-                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
-                    onLoad={() =>
-                      setLoadedImages((prev) => ({
-                        ...prev,
-                        [index]: true,
-                      }))
+                      {!loadedImages[index] && (
+                        <div className="absolute inset-0 animate-pulse bg-gray-200" />
+                      )}
+
+                      <Image
+                        src={product.image || "/placeholder.jpg"}
+                        alt={product.title}
+                        fill
+                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
+                        onLoad={() =>
+                          setLoadedImages((prev) => ({
+                            ...prev,
+                            [index]: true,
+                          }))
+                        }
+                        className={`object-cover hover:scale-110 transition duration-500 ${loadedImages[index]
+                          ? "opacity-100"
+                          : "opacity-0"
+                          }`}
+                      />
+                    </div>
+
+                    {/* Content */}
+                    <div className="p-6 flex flex-col flex-1">
+
+                      <h3 className="text-lg font-bold line-clamp-2">
+                        {product.title}
+                      </h3>
+
+                      <div className="mt-4 space-y-2">
+
+                        <p className="text-sm text-gray-600">
+                          <b>Brand:</b> {product.brand || "N/A"}
+                        </p>
+
+                        <p className="text-sm text-gray-600">
+                          <b>Model:</b> {product.model || "N/A"}
+                        </p>
+
+                      </div>
+
+                      <div className="mt-auto pt-6">
+                        <Link
+                          href={
+                            district
+                              ? `/${district}/items/${product.slug}`
+                              : `/items/${product.slug}`
+                          }
+                          className="block w-full bg-sky-700 text-white py-3 rounded-xl text-center font-medium hover:bg-sky-800 transition"
+                        >
+                          Get Quote
+                        </Link>
+                      </div>
+
+                    </div>
+                  </div>
+                ))}
+
+              </div>
+
+              {/* Pagination */}
+              <div className="flex justify-center items-center gap-3 mt-12">
+
+                <button
+                  disabled={currentPage === 1}
+                  onClick={() => setCurrentPage((p) => p - 1)}
+                  className="px-4 py-2 border rounded-xl disabled:opacity-40"
+                >
+                  ◀
+                </button>
+
+                {Array.from(
+                  {
+                    length: Math.min(3, totalPages),
+                  },
+                  (_, i) => {
+                    let pageNumber;
+
+                    if (currentPage <= 2) {
+                      pageNumber = i + 1;
+                    } else if (currentPage >= totalPages - 1) {
+                      pageNumber = totalPages - 2 + i;
+                    } else {
+                      pageNumber = currentPage - 1 + i;
                     }
-                    className={`object-cover hover:scale-110 transition duration-500 ${loadedImages[index]
-                      ? "opacity-100"
-                      : "opacity-0"
-                      }`}
+
+                    return (
+                      <button
+                        key={pageNumber}
+                        onClick={() =>
+                          setCurrentPage(pageNumber)
+                        }
+                        className={`w-10 h-10 rounded-xl ${currentPage === pageNumber
+                          ? "bg-sky-700 text-white"
+                          : "border"
+                          }`}
+                      >
+                        {pageNumber}
+                      </button>
+                    );
+                  }
+                )}
+
+                <button
+                  disabled={currentPage === totalPages}
+                  onClick={() =>
+                    setCurrentPage((p) => p + 1)
+                  }
+                  className="px-4 py-2 border rounded-xl disabled:opacity-40"
+                >
+                  ▶
+                </button>
+
+              </div>
+            </>
+          ) : (
+            <div className="mt-16 max-w-2xl mx-auto">
+              <div className="bg-white rounded-3xl border border-slate-200 p-12 text-center shadow-lg">
+
+                <div className="w-20 h-20 mx-auto mb-6 bg-sky-100 rounded-full flex items-center justify-center">
+                  <Search
+                    size={32}
+                    className="text-sky-700"
                   />
                 </div>
 
-                {/* Content */}
-                <div className="p-6 flex flex-col flex-1">
+                <h3 className="text-2xl font-bold text-slate-800">
+                  No Products Found
+                </h3>
 
-                  <h3 className="text-lg font-bold line-clamp-2">
-                    {product.title}
-                  </h3>
+                <p className="text-slate-500 mt-3">
+                  No products matched
+                  <span className="font-semibold">
+                    {" "} "{search}" {" "}
+                  </span>
+                </p>
 
-                  <div className="mt-4 space-y-2">
+                <button
+                  onClick={() => setSearch("")}
+                  className="mt-6 px-6 py-3 bg-sky-700 text-white rounded-xl hover:bg-sky-800 transition"
+                >
+                  Clear Search
+                </button>
 
-                    <p className="text-sm text-gray-600">
-                      <b>Brand:</b> {product.brand || "N/A"}
-                    </p>
-
-                    <p className="text-sm text-gray-600">
-                      <b>Model:</b> {product.model || "N/A"}
-                    </p>
-
-                  </div>
-
-                  <div className="mt-auto pt-6">
-                    <Link
-                      href={
-                        district
-                          ? `/${district}/items/${product.slug}`
-                          : `/items/${product.slug}`
-                      }
-                      className="block w-full bg-sky-700 text-white py-3 rounded-xl text-center font-medium"
-                    >
-                      Get Quote
-                    </Link>
-                  </div>
-
-                </div>
               </div>
-            )
-            )}
-          </div>
-          <div className="flex justify-center items-center gap-3 mt-12">
+            </div>
+          )}
 
-            <button
-              disabled={currentPage === 1}
-              onClick={() => setCurrentPage((p) => p - 1)}
-              className="px-4 py-2 border rounded-xl"
-            >
-              ◀
-            </button>
-
-            {Array.from(
-              {
-                length: Math.min(3, totalPages),
-              },
-              (_, i) => {
-                let pageNumber;
-
-                if (currentPage <= 2) {
-                  pageNumber = i + 1;
-                } else if (currentPage >= totalPages - 1) {
-                  pageNumber =
-                    totalPages - 2 + i;
-                } else {
-                  pageNumber =
-                    currentPage - 1 + i;
-                }
-
-                return (
-                  <button
-                    key={pageNumber}
-                    onClick={() =>
-                      setCurrentPage(pageNumber)
-                    }
-                    className={`w-10 h-10 rounded-xl ${currentPage === pageNumber
-                      ? "bg-sky-700 text-white"
-                      : "border"
-                      }`}
-                  >
-                    {pageNumber}
-                  </button>
-                );
-              }
-            )}
-
-            <button
-              disabled={currentPage === totalPages}
-              onClick={() =>
-                setCurrentPage((p) => p + 1)
-              }
-              className="px-4 py-2 border rounded-xl"
-            >
-              ▶
-            </button>
-
-          </div>
         </div>
       </section>
 
