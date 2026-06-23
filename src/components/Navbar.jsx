@@ -3,32 +3,46 @@
 import Link from "next/link";
 import { Menu, X } from "lucide-react";
 import { useState } from "react";
+import { usePathname } from "next/navigation";
 
 export default function Navbar() {
-  const [menuOpen, setMenuOpen] =
-    useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  const pathname = usePathname();
+
+  const pathParts = pathname
+    .split("/")
+    .filter(Boolean);
+
+  const staticRoutes = [
+    "about",
+    "services",
+    "items",
+    "contact",
+  ];
+
+  const district =
+    pathParts.length > 0 &&
+      !staticRoutes.includes(pathParts[0])
+      ? pathParts[0]
+      : "";
+
+  const makeLink = (path) => {
+    if (!district) return path;
+
+    if (path === "/") {
+      return `/${district}`;
+    }
+
+    return `/${district}${path}`;
+  };
 
   const navLinks = [
-    {
-      name: "Home",
-      path: "/",
-    },
-    {
-      name: "About",
-      path: "/about",
-    },
-    {
-      name: "Services",
-      path: "/services",
-    },
-    {
-      name: "Products",
-      path: "/products",
-    },
-    {
-      name: "Contact",
-      path: "/contact",
-    },
+    { name: "Home", path: "/" },
+    { name: "About", path: "/about" },
+    { name: "Services", path: "/services" },
+    { name: "Products", path: "/items" },
+    { name: "Contact", path: "/contact" },
   ];
 
   return (
@@ -36,7 +50,7 @@ export default function Navbar() {
       <div className="container-custom h-20 flex items-center justify-between">
 
         {/* Logo */}
-        <Link href="/">
+        <Link href={makeLink("/")}>
           <h1 className="text-xl md:text-2xl font-bold text-sky-700">
             Central
             <span className="text-slate-900">
@@ -50,7 +64,7 @@ export default function Navbar() {
           {navLinks.map((link) => (
             <Link
               key={link.name}
-              href={link.path}
+              href={makeLink(link.path)}
               className="hover:text-sky-700 transition"
             >
               {link.name}
@@ -60,16 +74,16 @@ export default function Navbar() {
 
         {/* Desktop Button */}
         <div className="hidden lg:block">
-          <button className="primary-btn">
-            Get Quote
-          </button>
+          <Link href={makeLink("/contact")}>
+            <button className="primary-btn">
+              Get Quote
+            </button>
+          </Link>
         </div>
 
-        {/* Mobile Button */}
+        {/* Mobile Menu Button */}
         <button
-          onClick={() =>
-            setMenuOpen(!menuOpen)
-          }
+          onClick={() => setMenuOpen(!menuOpen)}
           className="lg:hidden"
         >
           {menuOpen ? (
@@ -82,11 +96,10 @@ export default function Navbar() {
 
       {/* Mobile Menu */}
       <div
-        className={`lg:hidden overflow-hidden transition-all duration-300 ${
-          menuOpen
-            ? "max-h-[500px]"
-            : "max-h-0"
-        }`}
+        className={`lg:hidden overflow-hidden transition-all duration-300 ${menuOpen
+          ? "max-h-[500px]"
+          : "max-h-0"
+          }`}
       >
         <div className="bg-white border-t border-slate-100 p-6">
 
@@ -95,18 +108,22 @@ export default function Navbar() {
             {navLinks.map((link) => (
               <Link
                 key={link.name}
-                href={link.path}
-                onClick={() =>
-                  setMenuOpen(false)
-                }
+                href={makeLink(link.path)}
+                onClick={() => setMenuOpen(false)}
               >
                 {link.name}
               </Link>
             ))}
 
-            <button className="primary-btn mt-3 w-full">
-              Get Quote
-            </button>
+            <Link
+              href={makeLink("/contact")}
+              onClick={() => setMenuOpen(false)}
+            >
+              <button className="primary-btn mt-3 w-full">
+                Get Quote
+              </button>
+            </Link>
+
           </nav>
         </div>
       </div>

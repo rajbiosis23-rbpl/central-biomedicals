@@ -1,3 +1,4 @@
+"use client";
 import {
   Microscope,
   FlaskConical,
@@ -11,47 +12,45 @@ import PageBanner from "@/components/PageBanner";
 import SectionTitle from "@/components/SectionTitle";
 import ServiceCard from "@/components/ServiceCard";
 import CTASection from "@/components/CTASection";
-
+import { useEffect, useState } from "react";
+import { doc, getDoc } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 export default function ServicesPage() {
-  const services = [
-    {
-      icon: <Microscope size={30} />,
-      title: "Diagnostic Equipment",
-      description:
-        "Advanced diagnostic technologies for precision testing and healthcare efficiency.",
-    },
-    {
-      icon: <FlaskConical size={30} />,
-      title: "Laboratory Solutions",
-      description:
-        "Modern laboratory instruments designed for high performance and accuracy.",
-    },
-    {
-      icon: <ShieldCheck size={30} />,
-      title: "Biomedical Instruments",
-      description:
-        "Reliable biomedical devices supporting modern healthcare environments.",
-    },
-    {
-      icon: <Stethoscope size={30} />,
-      title: "Healthcare Consultation",
-      description:
-        "Professional consultation for diagnostics and healthcare solutions.",
-    },
-    {
-      icon: <Wrench size={30} />,
-      title: "Maintenance Support",
-      description:
-        "End-to-end maintenance and technical support for biomedical systems.",
-    },
-    {
-      icon: <Activity size={30} />,
-      title: "Research Assistance",
-      description:
-        "Expert support for biomedical research and advanced healthcare projects.",
-    },
+  const [services, setServices] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const icons = [
+    <Microscope size={30} />,
+    <FlaskConical size={30} />,
+    <ShieldCheck size={30} />,
+    <Stethoscope size={30} />,
+    <Wrench size={30} />,
+    <Activity size={30} />,
   ];
+  useEffect(() => {
+    const fetchServices = async () => {
+      try {
+        const snap = await getDoc(
+          doc(
+            db,
+            "websites",
+            "centralbiomedicals",
+            "pages",
+            "services"
+          )
+        );
 
+        if (snap.exists()) {
+          setServices(snap.data().services || []);
+        }
+      } catch (error) {
+        console.error(error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchServices();
+  }, []);
   return (
     <>
       {/* Banner */}
@@ -72,18 +71,33 @@ export default function ServicesPage() {
           />
 
           <div className="grid lg:grid-cols-3 md:grid-cols-2 gap-8 mt-16">
-            {services.map(
-              (service, index) => (
+
+            {loading
+              ? Array.from({ length: 6 }).map((_, index) => (
+                <div
+                  key={index}
+                  className="bg-white rounded-[30px] p-10 card-shadow border border-slate-100 animate-pulse"
+                >
+                  <div className="w-20 h-20 rounded-3xl bg-slate-200 mb-8"></div>
+
+                  <div className="h-8 bg-slate-200 rounded mb-6"></div>
+
+                  <div className="space-y-3">
+                    <div className="h-4 bg-slate-200 rounded"></div>
+                    <div className="h-4 bg-slate-200 rounded w-11/12"></div>
+                    <div className="h-4 bg-slate-200 rounded w-8/12"></div>
+                  </div>
+                </div>
+              ))
+              : services.map((service, index) => (
                 <ServiceCard
                   key={index}
-                  icon={service.icon}
+                  icon={icons[index]}
                   title={service.title}
-                  description={
-                    service.description
-                  }
+                  description={service.desc}
                 />
-              )
-            )}
+              ))}
+
           </div>
         </div>
       </section>

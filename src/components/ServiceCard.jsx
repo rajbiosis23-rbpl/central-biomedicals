@@ -1,11 +1,28 @@
-import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
 
 export default function ServiceCard({
   icon,
   title,
   description,
+  loading = false,
 }) {
+
+  if (loading) {
+    return (
+      <div className="bg-white rounded-[30px] p-8 border border-slate-100 card-shadow animate-pulse">
+        <div className="w-16 h-16 rounded-[22px] bg-slate-200 mb-6"></div>
+
+        <div className="h-8 bg-slate-200 rounded mb-4"></div>
+
+        <div className="space-y-3">
+          <div className="h-4 bg-slate-200 rounded"></div>
+          <div className="h-4 bg-slate-200 rounded w-11/12"></div>
+          <div className="h-4 bg-slate-200 rounded w-8/12"></div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="group bg-white rounded-[30px] p-8 border border-slate-100 card-shadow hover:-translate-y-2 transition-all duration-300">
 
@@ -24,17 +41,6 @@ export default function ServiceCard({
         {description}
       </p>
 
-      {/* Link */}
-      {/* <Link
-        href="/services"
-        className="inline-flex items-center gap-2 text-sky-700 font-semibold"
-      >
-        Learn More
-        <ArrowUpRight
-          size={18}
-          className="group-hover:translate-x-1 transition"
-        />
-      </Link> */}
     </div>
   );
 }

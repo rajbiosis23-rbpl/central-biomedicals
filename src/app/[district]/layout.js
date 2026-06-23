@@ -1,6 +1,6 @@
 export async function generateMetadata({ params }) {
 
-  const district = params?.district || "jaipur";
+  const { district = "jaipur" } = await params;
 
   const districtName = district
     .replace(/-/g, " ")
@@ -32,11 +32,8 @@ export async function generateMetadata({ params }) {
 
     openGraph: {
       title: `Biomedical Equipment in ${districtName}`,
-
       description: `Diagnostic laboratory equipment supplier in ${districtName}.`,
-
       url,
-
       type: "website",
     },
   };

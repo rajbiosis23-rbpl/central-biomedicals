@@ -2,7 +2,7 @@ import ContactPage from "@/app/contact/page";
 
 export default async function Page({ params }) {
 
-  const district = params?.district || "jaipur";
+  const { district = "jaipur" } = await params;
 
   const city = district
     .replace(/-/g, " ")
