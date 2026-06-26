@@ -1,15 +1,64 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import Image from "next/image";
+import { doc, getDoc } from "firebase/firestore";
+import { db } from "@/lib/firebase";
+
 import CBG from "../components/img/CBG.png";
-import { ArrowRight, ShieldCheck, Microscope,BadgeCheck,} from "lucide-react";
+
+import {
+  ArrowRight,
+  ShieldCheck,
+  Microscope,
+  BadgeCheck,
+} from "lucide-react";
 
 export default function HeroSection({ city }) {
+  const [loading, setLoading] = useState(true);
+
+  const [heroData, setHeroData] = useState({
+    title: "",
+    description: "",
+    button1Text: "",
+    button2Text: "",
+  });
+
+  useEffect(() => {
+    const fetchHeroData = async () => {
+      try {
+        const snap = await getDoc(
+          doc(db, "websites", "centralbiomedicals", "pages", "home")
+        );
+
+        if (snap.exists()) {
+          setHeroData(snap.data());
+        }
+      } catch (error) {
+        console.error("Error fetching hero data:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchHeroData();
+  }, []);
+
+  // District Routing
+  const districtSlug = city
+    ? city.toLowerCase().replace(/\s+/g, "-")
+    : "";
+
+  const makeLink = (path) => {
+    return districtSlug ? `/${districtSlug}${path}` : path;
+  };
+
   return (
     <section className="gradient-bg overflow-hidden">
       <div className="container-custom min-h-[85vh] py-20 lg:py-0 grid lg:grid-cols-2 gap-14 items-center">
+
         {/* Left Content */}
         <motion.div
           initial={{ opacity: 0, y: 70 }}
@@ -23,49 +72,71 @@ export default function HeroSection({ city }) {
             Trusted Biomedical Systems
           </div>
 
-          {/* Heading */}
-        <h1 className="text-4xl sm:text-5xl lg:text-7xl font-bold leading-tight text-slate-900">
-            Advanced
-            <span className="text-sky-700"> Diagnostic</span>
-            <br />
-            & Biomedical
-            <br />
-            Excellence
-            {city && (
+          {/* Title */}
+          <h1 className="text-4xl sm:text-5xl lg:text-7xl font-bold leading-tight text-slate-900">
+            {loading ? (
+              <div className="animate-pulse space-y-4">
+                <div className="h-12 bg-gray-200 rounded w-[80%]"></div>
+                <div className="h-12 bg-gray-200 rounded w-[60%]"></div>
+                <div className="h-12 bg-gray-200 rounded w-[70%]"></div>
+              </div>
+            ) : (
               <>
-                <br />
-                <span className="text-2xl lg:text-4xl text-sky-700 font-semibold">
-                  in {city}
-                </span>
+                {heroData.title}
+
+                {city && (
+                  <>
+                    <br />
+                    <span className="text-2xl lg:text-4xl text-sky-700 font-semibold">
+                      in {city}
+                    </span>
+                  </>
+                )}
               </>
             )}
           </h1>
 
           {/* Description */}
-      <p className="mt-7 text-slate-600 text-lg leading-8 max-w-xl">
-          Delivering high-quality diagnostic and biomedical technologies
-          {city && (
-            <>
-              {" "}across <strong>{city}</strong>
-            </>
-          )}{" "}
-          with precision, innovation, and trusted healthcare excellence.
-        </p>
+          {loading ? (
+            <div className="animate-pulse mt-7 space-y-3">
+              <div className="h-4 bg-gray-200 rounded w-full"></div>
+              <div className="h-4 bg-gray-200 rounded w-[90%]"></div>
+              <div className="h-4 bg-gray-200 rounded w-[75%]"></div>
+            </div>
+          ) : (
+            <p className="mt-7 text-slate-600 text-lg leading-8 max-w-xl">
+              {heroData.description}
+              {city && (
+                <>
+                  {" "}across <strong>{city}</strong>
+                </>
+              )}
+            </p>
+          )}
 
           {/* Buttons */}
           <div className="flex flex-col sm:flex-row gap-4 mt-10">
-            <Link href="/services">
-              <button className="primary-btn flex items-center gap-2">
-                Explore Services
-                <ArrowRight size={18} />
-              </button>
-            </Link>
+            {loading ? (
+              <>
+                <div className="animate-pulse h-12 w-44 bg-gray-200 rounded-lg"></div>
+                <div className="animate-pulse h-12 w-36 bg-gray-200 rounded-lg"></div>
+              </>
+            ) : (
+              <>
+                <Link href={makeLink("/services")}>
+                  <button className="primary-btn flex items-center gap-2">
+                    {heroData.button1Text || "Explore Services"}
+                    <ArrowRight size={18} />
+                  </button>
+                </Link>
 
-            <Link href="/contact">
-              <button className="secondary-btn">
-                Contact Us
-              </button>
-            </Link>
+                <Link href={makeLink("/contact")}>
+                  <button className="secondary-btn">
+                    {heroData.button2Text || "Contact Us"}
+                  </button>
+                </Link>
+              </>
+            )}
           </div>
 
           {/* Stats */}
@@ -97,6 +168,7 @@ export default function HeroSection({ city }) {
                 Quality Assurance
               </p>
             </div>
+
           </div>
         </motion.div>
 
@@ -108,20 +180,21 @@ export default function HeroSection({ city }) {
           className="relative"
         >
 
-          {/* Main Image Card */}
           <div className="glass-card rounded-[40px] p-6 card-shadow">
-           <Image
-             src={CBG}
-            alt="Central Biomedical"
-            width={1200}
-            height={900}
-            className="rounded-[28px] object-cover object-[20%_center] h-[350px] sm:h-[450px] lg:h-[550px] w-full"
-          />
+            <Image
+              src={CBG}
+              alt="Central Biomedical"
+              width={1200}
+              height={900}
+              className="rounded-[28px] object-cover object-[20%_center] h-[350px] sm:h-[450px] lg:h-[550px] w-full"
+            />
           </div>
 
           {/* Floating Card 1 */}
-        <div
-          className="absolute top-10 -left-10 bg-white p-5 rounded-3xl shadow-xl hidden lg:flex items-center gap-4" style={{ marginTop: "-27px" }}>
+          <div
+            className="absolute top-10 -left-10 bg-white p-5 rounded-3xl shadow-xl hidden lg:flex items-center gap-4"
+            style={{ marginTop: "-27px" }}
+          >
             <div className="bg-sky-100 p-3 rounded-2xl">
               <Microscope className="text-sky-700" />
             </div>
@@ -151,7 +224,9 @@ export default function HeroSection({ city }) {
               </p>
             </div>
           </div>
+
         </motion.div>
+
       </div>
     </section>
   );
