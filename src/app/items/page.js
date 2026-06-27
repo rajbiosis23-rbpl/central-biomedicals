@@ -275,42 +275,32 @@ export default function ProductsPage() {
           </div>
 
           {/* Layout */}
-          <div className="grid lg:grid-cols-[320px_1fr] gap-10 mt-16 items-start">
-
-            {/* ==========================
-                LEFT SIDEBAR
-            ========================== */}
-
-            <div className="self-start">
-
+          <div className="grid lg:grid-cols-[320px_minmax(0,1fr)] gap-10 mt-16 items-start">
               <aside
                 className="
-                sticky
-                top-24
-                h-[calc(100vh-120px)]
-                overflow-y-auto
-                rounded-3xl
-                border
-                border-slate-200
-                bg-white
-                shadow-xl
-                p-6
-              "
+                  sticky
+                  top-24
+                  self-start
+                  max-h-[calc(100vh-110px)]
+                  overflow-y-auto
+                  rounded-3xl
+                  border
+                  border-slate-200
+                  bg-white
+                  shadow-xl
+                  p-6
+                "
               >
-
                 <h3 className="text-2xl font-bold mb-6">
                   Categories
                 </h3>
 
                 <div className="space-y-3">
-
                   {categories.map((category) => (
-
                     <div
                       key={category}
                       className="border rounded-2xl overflow-hidden border-slate-200"
                     >
-
                       <button
                         onClick={() =>
                           toggleCategory(category)
@@ -395,7 +385,7 @@ export default function ProductsPage() {
 
               </aside>
 
-            </div>
+         
 
             {/* ==========================
                 RIGHT SIDE START
