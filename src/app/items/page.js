@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 
@@ -10,29 +10,71 @@ import {
   BadgeCheck,
   PackageCheck,
   Search,
+  ChevronDown,
+  ChevronRight,
+  ChevronUp,
 } from "lucide-react";
 
 import { db } from "@/lib/firebase";
 import { doc, getDoc } from "firebase/firestore";
 import { usePathname } from "next/navigation";
+
 import PageBanner from "@/components/PageBanner";
 import SectionTitle from "@/components/SectionTitle";
 import CTASection from "@/components/CTASection";
+
+const makeSlug = (text = "") =>
+  text
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9\s-]/g, "")
+    .replace(/\s+/g, "-");
+
+const getCategory = (item) => {
+  const title = (item.title || "").toLowerCase();
+
+  if (title.includes("electrolyte")) return "Electrolyte Reagents";
+  if (title.includes("hematology")) return "Hematology";
+  if (title.includes("elisa")) return "ELISA Kits";
+  if (title.includes("rapid")) return "Rapid Test Kits";
+  if (title.includes("biochemistry")) return "Biochemistry";
+  if (title.includes("immuno")) return "Immunoassay";
+
+  return "Other Products";
+};
+
 export default function ProductsPage() {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
-  const [currentPage, setCurrentPage] = useState(1);
 
-  const [loadedImages, setLoadedImages] = useState({});
+  const [search, setSearch] = useState("");
+
+  const [openedCategory, setOpenedCategory] =
+    useState("");
+
+  const [activeCategory, setActiveCategory] =
+    useState("");
+
+  const [pendingScroll, setPendingScroll] =
+    useState(null);
+
+  const [loadedImages, setLoadedImages] =
+    useState({});
+
+  const [showTopButton, setShowTopButton] =
+    useState(false);
+
   const pathname = usePathname();
 
-  const pathParts = pathname.split("/").filter(Boolean);
+  const pathParts = pathname
+    .split("/")
+    .filter(Boolean);
 
   const district =
     pathParts[0] === "items"
       ? null
       : pathParts[0];
+
   useEffect(() => {
     const fetchProducts = async () => {
       try {
@@ -47,13 +89,26 @@ export default function ProductsPage() {
         );
 
         if (snap.exists()) {
-          const data = snap.data().products || [];
+          const data =
+            snap.data().products || [];
 
-          setProducts(
-            data.filter(
-              (item) => item.isPublished !== false
+          const published = data
+            .filter(
+              (item) =>
+                item.isPublished !== false
             )
-          );
+            .map((item, index) => ({
+              ...item,
+              uid: index,
+              slug:
+                item.slug ||
+                makeSlug(item.title),
+              category:
+                item.category ||
+                getCategory(item),
+            }));
+
+          setProducts(published);
         }
       } catch (err) {
         console.error(err);
@@ -65,22 +120,105 @@ export default function ProductsPage() {
     fetchProducts();
   }, []);
 
-  const filteredProducts = products.filter((item) =>
-    item.title?.toLowerCase().includes(search.toLowerCase()) ||
-    item.brand?.toLowerCase().includes(search.toLowerCase()) ||
-    item.model?.toLowerCase().includes(search.toLowerCase())
-  );
+  const filteredProducts = useMemo(() => {
+    return products.filter((item) => {
+      const text = `
+      ${item.title}
+      ${item.brand}
+      ${item.model}
+      ${item.category}
+      `
+        .toLowerCase();
 
-  const itemsPerPage = 12;
+      return text.includes(
+        search.toLowerCase()
+      );
+    });
+  }, [products, search]);
 
-  const totalPages = Math.ceil(
-    filteredProducts.length / itemsPerPage
-  );
+  const groupedProducts = useMemo(() => {
+    const obj = {};
 
-  const paginatedProducts = filteredProducts.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
+    filteredProducts.forEach((item) => {
+      if (!obj[item.category]) {
+        obj[item.category] = [];
+      }
+
+      obj[item.category].push(item);
+    });
+
+    return obj;
+  }, [filteredProducts]);
+
+  const categories =
+    Object.keys(groupedProducts);
+
+  const toggleCategory = (category) => {
+    if (openedCategory === category) {
+      setOpenedCategory("");
+      return;
+    }
+
+    setOpenedCategory(category);
+  };
+
+  const scrollToProduct = (
+    slug,
+    category
+  ) => {
+    setOpenedCategory(category);
+    setActiveCategory(category);
+    setPendingScroll(slug);
+  };
+
+  useEffect(() => {
+    if (!pendingScroll) return;
+
+    const timer = setTimeout(() => {
+      const el =
+        document.getElementById(
+          pendingScroll
+        );
+
+      if (el) {
+        el.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
+      }
+
+      setPendingScroll(null);
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [openedCategory, pendingScroll]);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setShowTopButton(
+        window.scrollY > 500
+      );
+    };
+
+    window.addEventListener(
+      "scroll",
+      handleScroll
+    );
+
+    return () =>
+      window.removeEventListener(
+        "scroll",
+        handleScroll
+      );
+  }, []);
+
+  const scrollToTop = () => {
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth",
+    });
+  };
+
   if (loading) {
     return (
       <section className="section-padding">
@@ -97,7 +235,8 @@ export default function ProductsPage() {
       </section>
     );
   }
-  return (
+
+    return (
     <>
       {/* Banner */}
       <PageBanner
@@ -105,7 +244,7 @@ export default function ProductsPage() {
         subtitle="Explore advanced biomedical and diagnostic equipment designed for modern healthcare excellence."
       />
 
-      {/* Products Section */}
+      {/* Products */}
       <section className="section-padding bg-white">
         <div className="container-custom">
 
@@ -115,8 +254,9 @@ export default function ProductsPage() {
             description="Discover high-quality diagnostic and biomedical technologies tailored for laboratories, healthcare institutions, and modern diagnostics."
             center
           />
+              </div>
 
-          {/* Search Box */}
+          {/* Search */}
           <div className="max-w-2xl mx-auto mt-10 relative">
             <Search
               size={22}
@@ -125,183 +265,317 @@ export default function ProductsPage() {
 
             <input
               type="text"
-              placeholder="Search products by name, brand or model..."
+              placeholder="Search products..."
               value={search}
-              onChange={(e) => {
-                setSearch(e.target.value);
-                setCurrentPage(1);
-              }}
+              onChange={(e) =>
+                setSearch(e.target.value)
+              }
               className="w-full h-16 pl-14 pr-5 rounded-2xl border border-slate-200 bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
             />
           </div>
 
-          {filteredProducts.length > 0 ? (
-            <>
-              {/* Product Grid */}
-              <div className="grid xl:grid-cols-3 lg:grid-cols-3 md:grid-cols-2 grid-cols-1 gap-8 mt-16">
+          {/* Layout */}
+          <div className="grid lg:grid-cols-[320px_1fr] gap-10 mt-16 items-start">
 
-                {paginatedProducts.map((product, index) => (
-                  <div
-                    key={index}
-                    className="bg-white rounded-[32px] overflow-hidden border border-slate-100 card-shadow hover:-translate-y-2 transition-all duration-300 flex flex-col h-full"
-                  >
+            {/* ==========================
+                LEFT SIDEBAR
+            ========================== */}
 
-                    {/* Image */}
-                    <div className="relative h-[260px] bg-gray-100 overflow-hidden">
+            <div className="self-start">
 
-                      {!loadedImages[index] && (
-                        <div className="absolute inset-0 animate-pulse bg-gray-200" />
-                      )}
+              <aside
+                className="
+                sticky
+                top-24
+                h-[calc(100vh-120px)]
+                overflow-y-auto
+                rounded-3xl
+                border
+                border-slate-200
+                bg-white
+                shadow-xl
+                p-6
+              "
+              >
 
-                      <Image
-                        src={product.image || "/placeholder.jpg"}
-                        alt={product.title}
-                        fill
-                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
-                        onLoad={() =>
-                          setLoadedImages((prev) => ({
-                            ...prev,
-                            [index]: true,
-                          }))
-                        }
-                        className={`object-cover hover:scale-110 transition duration-500 ${loadedImages[index]
-                          ? "opacity-100"
-                          : "opacity-0"
-                          }`}
-                      />
-                    </div>
-
-                    {/* Content */}
-                    <div className="p-6 flex flex-col flex-1">
-
-                      <h3 className="text-lg font-bold line-clamp-2">
-                        {product.title}
-                      </h3>
-
-                      <div className="mt-4 space-y-2">
-
-                        <p className="text-sm text-gray-600">
-                          <b>Brand:</b> {product.brand || "N/A"}
-                        </p>
-
-                        <p className="text-sm text-gray-600">
-                          <b>Model:</b> {product.model || "N/A"}
-                        </p>
-
-                      </div>
-
-                      <div className="mt-auto pt-6">
-                        <Link
-                          href={
-                            district
-                              ? `/${district}/items/${product.slug}`
-                              : `/items/${product.slug}`
-                          }
-                          className="block w-full bg-sky-700 text-white py-3 rounded-xl text-center font-medium hover:bg-sky-800 transition"
-                        >
-                          Get Quote
-                        </Link>
-                      </div>
-
-                    </div>
-                  </div>
-                ))}
-
-              </div>
-
-              {/* Pagination */}
-              <div className="flex justify-center items-center gap-3 mt-12">
-
-                <button
-                  disabled={currentPage === 1}
-                  onClick={() => setCurrentPage((p) => p - 1)}
-                  className="px-4 py-2 border rounded-xl disabled:opacity-40"
-                >
-                  ◀
-                </button>
-
-                {Array.from(
-                  {
-                    length: Math.min(3, totalPages),
-                  },
-                  (_, i) => {
-                    let pageNumber;
-
-                    if (currentPage <= 2) {
-                      pageNumber = i + 1;
-                    } else if (currentPage >= totalPages - 1) {
-                      pageNumber = totalPages - 2 + i;
-                    } else {
-                      pageNumber = currentPage - 1 + i;
-                    }
-
-                    return (
-                      <button
-                        key={pageNumber}
-                        onClick={() =>
-                          setCurrentPage(pageNumber)
-                        }
-                        className={`w-10 h-10 rounded-xl ${currentPage === pageNumber
-                          ? "bg-sky-700 text-white"
-                          : "border"
-                          }`}
-                      >
-                        {pageNumber}
-                      </button>
-                    );
-                  }
-                )}
-
-                <button
-                  disabled={currentPage === totalPages}
-                  onClick={() =>
-                    setCurrentPage((p) => p + 1)
-                  }
-                  className="px-4 py-2 border rounded-xl disabled:opacity-40"
-                >
-                  ▶
-                </button>
-
-              </div>
-            </>
-          ) : (
-            <div className="mt-16 max-w-2xl mx-auto">
-              <div className="bg-white rounded-3xl border border-slate-200 p-12 text-center shadow-lg">
-
-                <div className="w-20 h-20 mx-auto mb-6 bg-sky-100 rounded-full flex items-center justify-center">
-                  <Search
-                    size={32}
-                    className="text-sky-700"
-                  />
-                </div>
-
-                <h3 className="text-2xl font-bold text-slate-800">
-                  No Products Found
+                <h3 className="text-2xl font-bold mb-6">
+                  Categories
                 </h3>
 
-                <p className="text-slate-500 mt-3">
-                  No products matched
-                  <span className="font-semibold">
-                    {" "} "{search}" {" "}
-                  </span>
-                </p>
+                <div className="space-y-3">
 
-                <button
-                  onClick={() => setSearch("")}
-                  className="mt-6 px-6 py-3 bg-sky-700 text-white rounded-xl hover:bg-sky-800 transition"
-                >
-                  Clear Search
-                </button>
+                  {categories.map((category) => (
 
-              </div>
+                    <div
+                      key={category}
+                      className="border rounded-2xl overflow-hidden border-slate-200"
+                    >
+
+                      <button
+                        onClick={() =>
+                          toggleCategory(category)
+                        }
+                        className={`w-full px-5 py-4 flex justify-between items-center transition-all
+
+                        ${
+                          activeCategory ===
+                          category
+                            ? "bg-sky-700 text-white"
+                            : "bg-white hover:bg-slate-50"
+                        }
+                        `}
+                      >
+
+                        <span className="flex items-center gap-3">
+
+                          {openedCategory ===
+                          category ? (
+                            <ChevronDown size={18} />
+                          ) : (
+                            <ChevronRight size={18} />
+                          )}
+
+                          {category}
+
+                        </span>
+
+                        <span className="text-sm font-semibold">
+
+                          {
+                            groupedProducts[
+                              category
+                            ].length
+                          }
+
+                        </span>
+
+                      </button>
+
+                      <div
+                        className="overflow-hidden transition-all duration-300"
+                        style={{
+                          maxHeight:
+                            openedCategory ===
+                            category
+                              ? groupedProducts[
+                                  category
+                                ].length * 48
+                              : 0,
+                        }}
+                      >
+
+                        {groupedProducts[
+                          category
+                        ].map((item) => (
+
+                          <button
+                            key={item.uid}
+                            onClick={() =>
+                              scrollToProduct(
+                                item.slug,
+                                category
+                              )
+                            }
+                            className="block w-full text-left px-6 py-3 border-t border-slate-100 hover:bg-slate-50"
+                          >
+
+                            {item.title}
+
+                          </button>
+
+                        ))}
+
+                      </div>
+
+                    </div>
+
+                  ))}
+
+                </div>
+
+              </aside>
+
             </div>
-          )}
 
-        </div>
-      </section>
+            {/* ==========================
+                RIGHT SIDE START
+            ========================== */}
+
+            <div className="space-y-16">
+                            {Object.entries(groupedProducts).map(
+                ([category, list]) => (
+
+                  <section
+                    key={category}
+                    id={category
+                      .replace(/\s+/g, "-")
+                      .toLowerCase()}
+                  >
+
+                    {/* Category Header */}
+
+                    <div className="flex items-center justify-between border-b border-slate-200 pb-5 mb-8">
+
+                      <h2 className="text-3xl font-bold text-slate-900">
+                        {category}
+                      </h2>
+
+                      <span className="text-slate-500 font-medium">
+                        {list.length} Products
+                      </span>
+
+                    </div>
+
+                    {/* Product List */}
+
+                    <div className="space-y-8">
+
+                      {list.map((product) => (
+
+                        <div
+                          key={product.uid}
+                          id={product.slug}
+                          className="bg-white rounded-[30px] border border-slate-200 shadow-lg hover:shadow-2xl transition-all duration-300 p-8"
+                        >
+
+                          <div className="grid lg:grid-cols-[240px_1fr_180px] gap-8 items-center">
+
+                            {/* Image */}
+
+                            <div className="relative h-[220px] rounded-3xl overflow-hidden bg-slate-100">
+
+                              {!loadedImages[
+                                product.uid
+                              ] && (
+                                <div className="absolute inset-0 bg-gray-200 animate-pulse" />
+                              )}
+
+                              <Image
+                                src={
+                                  product.image ||
+                                  "/placeholder.jpg"
+                                }
+                                alt={product.title}
+                                fill
+                                sizes="240px"
+                                onLoad={() =>
+                                  setLoadedImages(
+                                    (prev) => ({
+                                      ...prev,
+                                      [product.uid]:
+                                        true,
+                                    })
+                                  )
+                                }
+                                className={`object-contain p-5 transition duration-500 ${
+                                  loadedImages[
+                                    product.uid
+                                  ]
+                                    ? "opacity-100"
+                                    : "opacity-0"
+                                }`}
+                              />
+
+                            </div>
+
+                            {/* Content */}
+
+                            <div>
+
+                              <h3 className="text-2xl font-bold text-slate-900">
+                                {product.title}
+                              </h3>
+
+                              <p className="mt-4 text-slate-600 leading-8">
+                                {product.description ||
+                                  product.desc ||
+                                  "Premium biomedical equipment designed for laboratories, hospitals and diagnostic centres."}
+                              </p>
+
+                              <div className="grid md:grid-cols-2 gap-4 mt-6">
+
+                                <div className="bg-slate-50 rounded-xl p-4">
+                                  <p className="text-xs uppercase text-slate-400">
+                                    Brand
+                                  </p>
+                                  <p className="font-semibold mt-1">
+                                    {product.brand ||
+                                      "N/A"}
+                                  </p>
+                                </div>
+
+                                <div className="bg-slate-50 rounded-xl p-4">
+                                  <p className="text-xs uppercase text-slate-400">
+                                    Model
+                                  </p>
+                                  <p className="font-semibold mt-1">
+                                    {product.model ||
+                                      "N/A"}
+                                  </p>
+                                </div>
+
+                                <div className="bg-slate-50 rounded-xl p-4">
+                                  <p className="text-xs uppercase text-slate-400">
+                                    Instrument
+                                  </p>
+                                  <p className="font-semibold mt-1">
+                                    {product.instrument ||
+                                      "N/A"}
+                                  </p>
+                                </div>
+
+                                <div className="bg-slate-50 rounded-xl p-4">
+                                  <p className="text-xs uppercase text-slate-400">
+                                    Category
+                                  </p>
+                                  <p className="font-semibold mt-1">
+                                    {product.category}
+                                  </p>
+                                </div>
+
+                              </div>
+
+                            </div>
+
+                            {/* Button */}
+
+                            <div className="flex justify-center lg:justify-end">
+
+                              <Link
+                                href={
+                                  district
+                                    ? `/${district}/items/${product.slug}`
+                                    : `/items/${product.slug}`
+                                }
+                                className="px-8 py-4 rounded-2xl bg-sky-700 text-white font-semibold hover:bg-sky-800 transition whitespace-nowrap"
+                              >
+                                Get Quote
+                              </Link>
+
+                            </div>
+
+                          </div>
+
+                        </div>
+
+                      ))}
+
+                    </div>
+
+                  </section>
+
+                )
+              )}
+
+            </div>
+
+          </div>
+
+                </section>
 
       {/* Why Choose Products */}
       <section className="section-padding bg-slate-50">
+
         <div className="container-custom">
 
           <SectionTitle
@@ -331,25 +605,55 @@ export default function ProductsPage() {
                 title: "Premium Equipment",
               },
             ].map((item, index) => (
+
               <div
                 key={index}
-                className="bg-white p-8 rounded-[30px] text-center border border-slate-100 card-shadow"
+                className="bg-white rounded-[30px] border border-slate-100 card-shadow text-center p-8"
               >
+
                 <div className="w-16 h-16 mx-auto rounded-[22px] bg-sky-100 text-sky-700 flex items-center justify-center mb-6">
+
                   {item.icon}
+
                 </div>
 
                 <h3 className="text-xl font-semibold">
+
                   {item.title}
+
                 </h3>
+
               </div>
+
             ))}
+
           </div>
+
         </div>
+
       </section>
 
       {/* CTA */}
+
       <CTASection />
+
+      {/* Back To Top */}
+
+      {showTopButton && (
+
+        <button
+          onClick={scrollToTop}
+          className="fixed bottom-8 right-8 z-50 w-14 h-14 rounded-full bg-sky-700 text-white shadow-2xl hover:scale-110 transition flex items-center justify-center"
+        >
+
+          <ChevronUp size={24} />
+
+        </button>
+
+      )}
+
     </>
+
   );
+
 }
