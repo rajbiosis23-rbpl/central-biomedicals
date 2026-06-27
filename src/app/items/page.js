@@ -16,7 +16,12 @@ import {
 } from "lucide-react";
 
 import { db } from "@/lib/firebase";
-import { doc, getDoc } from "firebase/firestore";
+import {
+  doc,
+  getDoc,
+  getDocs,
+  collection,
+} from "firebase/firestore";
 import { usePathname } from "next/navigation";
 
 import PageBanner from "@/components/PageBanner";
@@ -30,24 +35,18 @@ const makeSlug = (text = "") =>
     .replace(/[^a-z0-9\s-]/g, "")
     .replace(/\s+/g, "-");
 
-const getCategory = (item) => {
-  const title = (item.title || "").toLowerCase();
 
-  if (title.includes("electrolyte")) return "Electrolyte Reagents";
-  if (title.includes("hematology")) return "Hematology";
-  if (title.includes("elisa")) return "ELISA Kits";
-  if (title.includes("rapid")) return "Rapid Test Kits";
-  if (title.includes("biochemistry")) return "Biochemistry";
-  if (title.includes("immuno")) return "Immunoassay";
-
-  return "Other Products";
-};
 
 export default function ProductsPage() {
   const [products, setProducts] = useState([]);
+  const [categorySearch, setCategorySearch] =
+    useState("");
+
+  const [productSearch, setProductSearch] =
+    useState("");
   const [loading, setLoading] = useState(true);
 
-  const [search, setSearch] = useState("");
+
 
   const [openedCategory, setOpenedCategory] =
     useState("");
@@ -78,7 +77,47 @@ export default function ProductsPage() {
   useEffect(() => {
     const fetchProducts = async () => {
       try {
-        const snap = await getDoc(
+
+        const categorySnap = await getDocs(
+          collection(
+            db,
+            "websites",
+            "centralbiomedicals",
+            "pages",
+            "categoryproducts",
+            "categories"
+          )
+        );
+
+        const allProducts = [];
+
+        categorySnap.forEach((categoryDoc) => {
+
+          const data = categoryDoc.data();
+
+          const categoryProducts =
+            (data.products || [])
+              .filter(
+                (p) => p.isPublished !== false
+              )
+              .map((item, index) => ({
+                ...item,
+                uid: `${categoryDoc.id}-${index}`,
+                category:
+                  data.category ||
+                  categoryDoc.id,
+                slug:
+                  item.slug ||
+                  makeSlug(item.title),
+              }));
+
+          allProducts.push(
+            ...categoryProducts
+          );
+
+        });
+
+        const oldSnap = await getDoc(
           doc(
             db,
             "websites",
@@ -88,28 +127,31 @@ export default function ProductsPage() {
           )
         );
 
-        if (snap.exists()) {
-          const data =
-            snap.data().products || [];
+        if (oldSnap.exists()) {
 
-          const published = data
-            .filter(
-              (item) =>
-                item.isPublished !== false
-            )
-            .map((item, index) => ({
-              ...item,
-              uid: index,
-              slug:
-                item.slug ||
-                makeSlug(item.title),
-              category:
-                item.category ||
-                getCategory(item),
-            }));
+          const oldProducts =
+            (oldSnap.data().products || [])
+              .filter(
+                (p) => p.isPublished !== false
+              )
+              .map((item, index) => ({
+                ...item,
+                uid: `other-${index}`,
+                category:
+                  "Other Products",
+                slug:
+                  item.slug ||
+                  makeSlug(item.title),
+              }));
 
-          setProducts(published);
+          allProducts.push(
+            ...oldProducts
+          );
+
         }
+
+        setProducts(allProducts);
+
       } catch (err) {
         console.error(err);
       } finally {
@@ -131,10 +173,10 @@ export default function ProductsPage() {
         .toLowerCase();
 
       return text.includes(
-        search.toLowerCase()
+        productSearch.toLowerCase()
       );
     });
-  }, [products, search]);
+  }, [products, productSearch]);
 
   const groupedProducts = useMemo(() => {
     const obj = {};
@@ -150,6 +192,35 @@ export default function ProductsPage() {
     return obj;
   }, [filteredProducts]);
 
+  const sortedGroupedProducts =
+    useMemo(() => {
+
+      const entries =
+        Object.entries(
+          groupedProducts
+        );
+
+      entries.sort(([a], [b]) => {
+
+        if (
+          a === "Other Products"
+        )
+          return 1;
+
+        if (
+          b === "Other Products"
+        )
+          return -1;
+
+        return a.localeCompare(b);
+
+      });
+
+      return Object.fromEntries(
+        entries
+      );
+
+    }, [groupedProducts]);
   const categories =
     Object.keys(groupedProducts);
 
@@ -236,7 +307,7 @@ export default function ProductsPage() {
     );
   }
 
-    return (
+  return (
     <>
       {/* Banner */}
       <PageBanner
@@ -254,145 +325,182 @@ export default function ProductsPage() {
             description="Discover high-quality diagnostic and biomedical technologies tailored for laboratories, healthcare institutions, and modern diagnostics."
             center
           />
-              </div>
+        </div>
 
-          {/* Search */}
-          <div className="max-w-2xl mx-auto mt-10 relative">
-            <Search
-              size={22}
-              className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400"
-            />
+        {/* Search */}
+        <div className="max-w-2xl mx-auto mt-6 lg:mt-10 px-4 lg:px-0 relative">
+          <Search
+            size={22}
+            className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400"
+          />
 
-            <input
-              type="text"
-              placeholder="Search products..."
-              value={search}
-              onChange={(e) =>
-                setSearch(e.target.value)
-              }
-              className="w-full h-16 pl-14 pr-5 rounded-2xl border border-slate-200 bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
-            />
-          </div>
+          <input
+            type="text"
+            placeholder="Search products..."
+            value={productSearch}
+            onChange={(e) =>
+              setProductSearch(e.target.value)
+            }
+            className="w-full h-16 pl-14 pr-5 rounded-2xl border border-slate-200 bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
+          />
+        </div>
 
-          {/* Layout */}
-          <div className="grid lg:grid-cols-[320px_minmax(0,1fr)] gap-10 mt-16 items-start">
-              <aside
-                className="
-                  sticky
-                  top-24
-                  self-start
-                  max-h-[calc(100vh-110px)]
-                  overflow-y-auto
-                  rounded-3xl
-                  border
-                  border-slate-200
-                  bg-white
-                  shadow-xl
-                  p-6
-                "
-              >
-                <h3 className="text-2xl font-bold mb-6">
-                  Categories
-                </h3>
+        {/* Layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-[320px_minmax(0,1fr)] gap-6 lg:gap-10 mt-8 lg:mt-16 items-start px-4 lg:px-0">
+          <aside
+            className="
+lg:sticky
+lg:top-24
+self-start
+rounded-2xl lg:rounded-3xl
+border
+border-slate-200
+bg-white
+shadow-lg lg:shadow-xl
+p-4 lg:p-6
+"
+          >
+            <h3 className="text-2xl font-bold mb-6">
+              Categories
+            </h3>
 
-                <div className="space-y-3">
-                  {categories.map((category) => (
-                    <div
-                      key={category}
-                      className="border rounded-2xl overflow-hidden border-slate-200"
-                    >
-                      <button
-                        onClick={() =>
-                          toggleCategory(category)
-                        }
-                        className={`w-full px-5 py-4 flex justify-between items-center transition-all
+            <div className="space-y-3">
+              {Object.keys(sortedGroupedProducts)
+                .filter((category) =>
+                  category
+                    .toLowerCase()
+                    .includes(
+                      categorySearch.toLowerCase()
+                    )
+                )
+                .map((category) => (
+                  <div
+                    key={category}
+                    className="border rounded-2xl overflow-hidden border-slate-200"
+                  >
+                    <button
+                      onClick={() =>
+                        toggleCategory(category)
+                      }
+                      className={`w-full px-5 py-4 flex justify-between items-center transition-all
 
-                        ${
-                          activeCategory ===
+                        ${activeCategory ===
                           category
-                            ? "bg-sky-700 text-white"
-                            : "bg-white hover:bg-slate-50"
+                          ? "bg-sky-700 text-white"
+                          : "bg-white hover:bg-slate-50"
                         }
                         `}
-                      >
+                    >
 
-                        <span className="flex items-center gap-3">
+                      <span className="flex items-center gap-3">
 
-                          {openedCategory ===
+                        {openedCategory ===
                           category ? (
-                            <ChevronDown size={18} />
-                          ) : (
-                            <ChevronRight size={18} />
-                          )}
+                          <ChevronDown size={18} />
+                        ) : (
+                          <ChevronRight size={18} />
+                        )}
 
-                          {category}
+                        {category}
 
-                        </span>
+                      </span>
 
-                        <span className="text-sm font-semibold">
+                      <span className="text-sm font-semibold">
 
-                          {
-                            groupedProducts[
-                              category
-                            ].length
-                          }
-
-                        </span>
-
-                      </button>
-
-                      <div
-                        className="overflow-hidden transition-all duration-300"
-                        style={{
-                          maxHeight:
-                            openedCategory ===
+                        {
+                          groupedProducts[
                             category
-                              ? groupedProducts[
-                                  category
-                                ].length * 48
-                              : 0,
-                        }}
-                      >
+                          ].length
+                        }
 
-                        {groupedProducts[
-                          category
-                        ].map((item) => (
+                      </span>
 
-                          <button
-                            key={item.uid}
-                            onClick={() =>
-                              scrollToProduct(
-                                item.slug,
-                                category
-                              )
-                            }
-                            className="block w-full text-left px-6 py-3 border-t border-slate-100 hover:bg-slate-50"
-                          >
+                    </button>
 
-                            {item.title}
+                    <div
+                      className="overflow-hidden transition-all duration-300"
+                      style={{
+                        maxHeight:
+                          openedCategory ===
+                            category
+                            ? groupedProducts[
+                              category
+                            ].length * 48
+                            : 0,
+                      }}
+                    >
 
-                          </button>
+                      {groupedProducts[
+                        category
+                      ].map((item) => (
 
-                        ))}
+                        <button
+                          key={item.uid}
+                          onClick={() =>
+                            scrollToProduct(
+                              item.slug,
+                              category
+                            )
+                          }
+                          className="block w-full text-left px-6 py-3 border-t border-slate-100 hover:bg-slate-50"
+                        >
 
-                      </div>
+                          {item.title}
+
+                        </button>
+
+                      ))}
 
                     </div>
 
-                  ))}
+                  </div>
 
-                </div>
+                ))}
 
-              </aside>
+            </div>
 
-         
+          </aside>
 
-            {/* ==========================
+
+
+          {/* ==========================
                 RIGHT SIDE START
             ========================== */}
 
-            <div className="space-y-16">
-                            {Object.entries(groupedProducts).map(
+          <div className="space-y-16">
+            {filteredProducts.length === 0 ? (
+
+              <div className="bg-white border border-slate-200 rounded-[32px] p-10 lg:p-16 text-center shadow-lg">
+
+                <div className="w-24 h-24 mx-auto rounded-full bg-sky-100 flex items-center justify-center text-5xl mb-6">
+                  🔍
+                </div>
+
+                <h2 className="text-2xl lg:text-4xl font-bold text-slate-900">
+                  Product Not Found
+                </h2>
+
+                <p className="mt-4 text-slate-500 max-w-xl mx-auto leading-7">
+                  We couldn't find any products matching
+                  <span className="font-semibold text-sky-700">
+                    {" "} "{productSearch}" {" "}
+                  </span>
+                  .
+                  Please try another keyword or browse categories.
+                </p>
+
+                <button
+                  onClick={() => setProductSearch("")}
+                  className="mt-8 px-8 py-3 rounded-xl bg-sky-700 text-white font-semibold hover:bg-sky-800 transition"
+                >
+                  View All Products
+                </button>
+
+              </div>
+
+            ) : (
+
+              Object.entries(groupedProducts).map(
                 ([category, list]) => (
 
                   <section
@@ -404,7 +512,7 @@ export default function ProductsPage() {
 
                     {/* Category Header */}
 
-                    <div className="flex items-center justify-between border-b border-slate-200 pb-5 mb-8">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-slate-200 pb-4 lg:pb-5 mb-6 lg:mb-8">
 
                       <h2 className="text-3xl font-bold text-slate-900">
                         {category}
@@ -428,17 +536,17 @@ export default function ProductsPage() {
                           className="bg-white rounded-[30px] border border-slate-200 shadow-lg hover:shadow-2xl transition-all duration-300 p-8"
                         >
 
-                          <div className="grid lg:grid-cols-[240px_1fr_180px] gap-8 items-center">
+                          <div className="grid grid-cols-1 lg:grid-cols-[240px_1fr_180px] gap-5 lg:gap-8 items-center">
 
                             {/* Image */}
 
-                            <div className="relative h-[220px] rounded-3xl overflow-hidden bg-slate-100">
+                            <div className="relative h-[180px] sm:h-[220px] rounded-2xl lg:rounded-3xl overflow-hidden bg-slate-100">
 
                               {!loadedImages[
                                 product.uid
                               ] && (
-                                <div className="absolute inset-0 bg-gray-200 animate-pulse" />
-                              )}
+                                  <div className="absolute inset-0 bg-gray-200 animate-pulse" />
+                                )}
 
                               <Image
                                 src={
@@ -457,13 +565,12 @@ export default function ProductsPage() {
                                     })
                                   )
                                 }
-                                className={`object-contain p-5 transition duration-500 ${
-                                  loadedImages[
-                                    product.uid
-                                  ]
-                                    ? "opacity-100"
-                                    : "opacity-0"
-                                }`}
+                                className={`object-contain p-5 transition duration-500 ${loadedImages[
+                                  product.uid
+                                ]
+                                  ? "opacity-100"
+                                  : "opacity-0"
+                                  }`}
                               />
 
                             </div>
@@ -554,14 +661,14 @@ export default function ProductsPage() {
 
                   </section>
 
-                )
-              )}
-
-            </div>
+                ))
+            )}
 
           </div>
 
-                </section>
+        </div>
+
+      </section>
 
       {/* Why Choose Products */}
       <section className="section-padding bg-slate-50">
