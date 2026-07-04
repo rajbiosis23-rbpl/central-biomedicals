@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import toast from "react-hot-toast";
+import { usePathname } from "next/navigation";
 import {
     doc,
     getDoc,
@@ -22,6 +23,20 @@ export default function ProductDetails({ slug }) {
 
     const [submitting, setSubmitting] =
         useState(false);
+    const pathname = usePathname();
+
+    const pathParts = pathname
+        .split("/")
+        .filter(Boolean);
+
+    const city =
+        pathParts.length > 1
+            ? pathParts[0]
+            : "India";
+
+    const cityName =
+        city.charAt(0).toUpperCase() +
+        city.slice(1);
 
     useEffect(() => {
         const loadProduct = async () => {
@@ -117,7 +132,47 @@ export default function ProductDetails({ slug }) {
             setSubmitting(false);
         }
     };
+    const productSchema = product
+        ? {
+            "@context": "https://schema.org",
+            "@type": "Product",
+            name: product.title,
+            image: product.image ? [product.image] : [],
+            description:
+                product.desc ||
+                product.description ||
+                product.title,
+            brand: {
+                "@type": "Brand",
+                name: product.brand || "Central Biomedicals",
+            },
+        }
+        : null;
 
+    const faqSchema = product
+        ? {
+            "@context": "https://schema.org",
+            "@type": "FAQPage",
+            mainEntity: [
+                {
+                    "@type": "Question",
+                    name: `What is ${product.title} used for?`,
+                    acceptedAnswer: {
+                        "@type": "Answer",
+                        text: `${product.title} is used in hospitals, pathology labs and diagnostic centres.`,
+                    },
+                },
+                {
+                    "@type": "Question",
+                    name: "Do you provide installation support?",
+                    acceptedAnswer: {
+                        "@type": "Answer",
+                        text: "Yes, installation and technical support are available.",
+                    },
+                },
+            ],
+        }
+        : null;
     if (!product) {
         return (
             <section className="py-10 md:py-20 bg-slate-50">
@@ -172,8 +227,23 @@ export default function ProductDetails({ slug }) {
     }
     return (
         <section className="py-10 md:py-20 bg-slate-50">
-            <div className="container-custom">
+            <script
+                type="application/ld+json"
+                dangerouslySetInnerHTML={{
+                    __html: JSON.stringify(productSchema),
+                }}
+            />
 
+            <script
+                type="application/ld+json"
+                dangerouslySetInnerHTML={{
+                    __html: JSON.stringify(faqSchema),
+                }}
+            />
+            <div className="container-custom">
+                <div className="mb-6 text-sm text-slate-500">
+                    Home / Products / {product.title}
+                </div>
                 {/* Top Section */}
 
                 <div className="grid lg:grid-cols-2 gap-12">
@@ -329,7 +399,7 @@ export default function ProductDetails({ slug }) {
 
                         {/* Description */}
 
-                        <div className="bg-white rounded-[24px] md:rounded-[32px] p-5 sm:p-6 md:p-8  md:p-10 shadow-[0_20px_60px_rgba(0,0,0,0.08)]">
+                        <div className="bg-white rounded-[24px] md:rounded-[32px] p-5 sm:p-6 md:p-10 shadow-[0_20px_60px_rgba(0,0,0,0.08)]">
 
                             <h3 className="text-2xl md:text-3xl font-bold mb-4 md:mb-6 text-slate-900">
                                 Product Description
@@ -340,30 +410,190 @@ export default function ProductDetails({ slug }) {
                                     product.description ||
                                     "No description available."}
                             </p>
+
+                            {/* Specifications Table */}
+
+                            <div className="mt-10 overflow-x-auto">
+                                <table className="w-full border border-slate-200">
+                                    <tbody>
+
+                                        <tr>
+                                            <td className="border p-3 font-semibold">
+                                                Brand
+                                            </td>
+                                            <td className="border p-3">
+                                                {product.brand || "N/A"}
+                                            </td>
+                                        </tr>
+
+                                        <tr>
+                                            <td className="border p-3 font-semibold">
+                                                Model
+                                            </td>
+                                            <td className="border p-3">
+                                                {product.model || "N/A"}
+                                            </td>
+                                        </tr>
+
+                                        <tr>
+                                            <td className="border p-3 font-semibold">
+                                                Usage
+                                            </td>
+                                            <td className="border p-3">
+                                                {product.usage || "N/A"}
+                                            </td>
+                                        </tr>
+
+                                        <tr>
+                                            <td className="border p-3 font-semibold">
+                                                Automation
+                                            </td>
+                                            <td className="border p-3">
+                                                {product.automation || "N/A"}
+                                            </td>
+                                        </tr>
+
+                                        <tr>
+                                            <td className="border p-3 font-semibold">
+                                                Capacity
+                                            </td>
+                                            <td className="border p-3">
+                                                {product.capacity || "N/A"}
+                                            </td>
+                                        </tr>
+
+                                        <tr>
+                                            <td className="border p-3 font-semibold">
+                                                Throughput
+                                            </td>
+                                            <td className="border p-3">
+                                                {product.throughput || "N/A"}
+                                            </td>
+                                        </tr>
+
+                                    </tbody>
+                                </table>
+                            </div>
+
                             {/* SEO Content */}
 
-                            <div className="mt-10">
+                            <div className="mt-12">
 
                                 <h3 className="text-2xl font-bold mb-4 text-slate-900">
-                                    Why Choose Central Biomedicals?
+                                    Why Choose Central Biomedicals in {cityName}?
                                 </h3>
 
-                                <p className="text-slate-600 leading-8 mb-4">
-                                    Central Biomedicals is a trusted supplier of
-                                    biomedical and laboratory equipment across India.
-                                    We provide high-quality diagnostic instruments,
-                                    CBC Machines, Hematology Analyzers, Biochemistry
-                                    Analyzers and laboratory solutions for hospitals,
-                                    pathology laboratories and diagnostic centres.
-                                </p>
-
                                 <p className="text-slate-600 leading-8">
-                                    Our team provides installation assistance,
-                                    technical guidance and customer support to help
-                                    healthcare facilities improve diagnostic accuracy
-                                    and operational efficiency.
+                                    Central Biomedicals is a trusted supplier and
+                                    distributor of {product.title} in {cityName}.
+                                    We provide high-quality biomedical and laboratory
+                                    equipment for hospitals, pathology laboratories,
+                                    diagnostic centres and healthcare facilities.
                                 </p>
 
+                                <div className="mt-8">
+
+                                    <h3 className="text-2xl font-bold mb-4">
+                                        Features of {product.title}
+                                    </h3>
+
+                                    <p className="text-slate-600 leading-8">
+                                        {product.title} offers reliable performance,
+                                        accurate results, easy operation, long service
+                                        life and efficient workflow for laboratories
+                                        and hospitals.
+                                    </p>
+
+                                </div>
+
+                                <div className="mt-8">
+
+                                    <h3 className="text-2xl font-bold mb-4">
+                                        Applications of {product.title}
+                                    </h3>
+
+                                    <p className="text-slate-600 leading-8">
+                                        Widely used in hospitals, pathology labs,
+                                        diagnostic centres, blood banks, research
+                                        institutes and healthcare facilities.
+                                    </p>
+
+                                </div>
+
+                                <div className="mt-8">
+
+                                    <h3 className="text-2xl font-bold mb-4">
+                                        {product.title} Supplier in {cityName}
+                                    </h3>
+
+                                    <p className="text-slate-600 leading-8">
+                                        Central Biomedicals supplies {product.title}
+                                        in {cityName} with technical support,
+                                        installation assistance and customer service
+                                        for hospitals and laboratories.
+                                    </p>
+
+                                </div>
+                                <div className="mt-8">
+
+                                    <h3 className="text-2xl font-bold mb-4">
+                                        {product.title} Dealer in {cityName}
+                                    </h3>
+
+                                    <p className="text-slate-600 leading-8">
+                                        Central Biomedicals is a trusted dealer of
+                                        {product.title} in {cityName}. We supply
+                                        biomedical equipment, laboratory instruments,
+                                        diagnostic analyzers and healthcare devices
+                                        to hospitals, pathology labs and research centres.
+                                    </p>
+
+                                </div>
+
+                                <div className="mt-8">
+
+                                    <h3 className="text-2xl font-bold mb-4">
+                                        {product.title} Distributor in {cityName}
+                                    </h3>
+
+                                    <p className="text-slate-600 leading-8">
+                                        Looking for a reliable distributor of
+                                        {product.title} in {cityName}? We provide
+                                        installation support, product guidance,
+                                        maintenance assistance and fast delivery.
+                                    </p>
+
+                                </div>
+
+                                <div className="mt-8">
+
+                                    <h3 className="text-2xl font-bold mb-4">
+                                        Buy {product.title} in {cityName}
+                                    </h3>
+
+                                    <p className="text-slate-600 leading-8">
+                                        Buy high quality {product.title} in
+                                        {cityName} at competitive prices.
+                                        Contact Central Biomedicals for the
+                                        latest quotation and product availability.
+                                    </p>
+
+                                </div>
+
+                                <div className="mt-8">
+
+                                    <h3 className="text-2xl font-bold mb-4">
+                                        {product.title} Price in {cityName}
+                                    </h3>
+
+                                    <p className="text-slate-600 leading-8">
+                                        The price of {product.title} depends on
+                                        brand, model, specifications and features.
+                                        Contact our team for the latest pricing,
+                                        availability and delivery details.
+                                    </p>
+
+                                </div>
                             </div>
 
                             {/* FAQ Section */}
@@ -374,20 +604,51 @@ export default function ProductDetails({ slug }) {
                                     Frequently Asked Questions
                                 </h3>
 
-                                <div className="space-y-6">
+                                <div className="space-y-8">
 
                                     <div>
                                         <h4 className="font-semibold text-lg">
-                                            What is {product.title} used for?
+                                            What is {product.title} used for in {cityName}?
                                         </h4>
 
                                         <p className="text-slate-600 mt-2">
-                                            {product.title} is commonly used in
-                                            hospitals, pathology laboratories and
-                                            diagnostic centres.
+                                            {product.title} is commonly used in hospitals,
+                                            pathology laboratories and diagnostic centres.
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <h4 className="font-semibold text-lg">
+                                            What is the price of {product.title} in {cityName}?
+                                        </h4>
+
+                                        <p className="text-slate-600 mt-2">
+                                            Pricing depends on specifications,
+                                            brand and model. Contact us for a quote.
                                         </p>
                                     </div>
 
+                                    <div>
+                                        <h4 className="font-semibold text-lg">
+                                            Are you an authorized supplier of {product.title}?
+                                        </h4>
+
+                                        <p className="text-slate-600 mt-2">
+                                            We supply genuine biomedical and
+                                            laboratory equipment from trusted brands.
+                                        </p>
+                                    </div>
+
+                                    <div>
+                                        <h4 className="font-semibold text-lg">
+                                            Can hospitals in {cityName} order this product?
+                                        </h4>
+
+                                        <p className="text-slate-600 mt-2">
+                                            Yes, hospitals, pathology laboratories,
+                                            diagnostic centres and healthcare facilities
+                                            can order this product.
+                                        </p>
+                                    </div>
                                     <div>
                                         <h4 className="font-semibold text-lg">
                                             Do you provide installation support?
@@ -411,9 +672,44 @@ export default function ProductDetails({ slug }) {
                                         </p>
                                     </div>
 
+                                    <div>
+                                        <h4 className="font-semibold text-lg">
+                                            Do you provide warranty?
+                                        </h4>
+
+                                        <p className="text-slate-600 mt-2">
+                                            Warranty depends on the manufacturer and
+                                            product model.
+                                        </p>
+                                    </div>
+
+                                    <div>
+                                        <h4 className="font-semibold text-lg">
+                                            Do you deliver across India?
+                                        </h4>
+
+                                        <p className="text-slate-600 mt-2">
+                                            Yes, we supply products across India with
+                                            safe packaging and logistics support.
+                                        </p>
+                                    </div>
+
+                                    <div>
+                                        <h4 className="font-semibold text-lg">
+                                            How can I contact Central Biomedials?
+                                        </h4>
+
+                                        <p className="text-slate-600 mt-2">
+                                            You can fill out the enquiry form or
+                                            contact our team directly for product
+                                            details and quotations.
+                                        </p>
+                                    </div>
+
                                 </div>
 
                             </div>
+
                         </div>
 
                     </div>
