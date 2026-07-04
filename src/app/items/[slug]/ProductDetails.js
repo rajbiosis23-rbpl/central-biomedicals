@@ -1,9 +1,21 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import Image from "next/image";
 import toast from "react-hot-toast";
+
 import { usePathname } from "next/navigation";
+
+
+import {
+    FaPlay,
+    FaShareAlt,
+    FaWhatsapp,
+    FaFacebook,
+    FaInstagram,
+    FaLink,
+} from "react-icons/fa";
+
 import {
     doc,
     getDoc,
@@ -15,6 +27,11 @@ import { db } from "@/lib/firebase";
 export default function ProductDetails({ slug }) {
     const [product, setProduct] = useState(null);
     const [imageLoaded, setImageLoaded] = useState(false);
+    const [selectedImage, setSelectedImage] = useState("");
+    const [selectedMedia, setSelectedMedia] = useState("image");
+    const [showShare, setShowShare] = useState(false);
+
+    const shareRef = useRef();
     const [form, setForm] = useState({
         name: "",
         email: "",
@@ -61,6 +78,16 @@ export default function ProductDetails({ slug }) {
                 );
 
                 setProduct(found || null);
+
+                if (found) {
+                    if (found.images?.length > 0) {
+                        setSelectedImage(found.images[0]);
+                    } else {
+                        setSelectedImage(found.image);
+                    }
+
+                    setSelectedMedia("image");
+                }
             } catch (error) {
                 console.error(error);
             }
@@ -173,6 +200,68 @@ export default function ProductDetails({ slug }) {
             ],
         }
         : null;
+
+    const handleCopy = async () => {
+        await navigator.clipboard.writeText(window.location.href);
+        toast.success("Link Copied");
+        setShowShare(false);
+    };
+
+    const handleWhatsapp = () => {
+        const shareText = `🔬 ${product?.title}
+
+${product?.desc}
+
+🌐 ${window.location.href}`;
+
+        window.open(
+            `https://wa.me/?text=${encodeURIComponent(shareText)}`,
+            "_blank"
+        );
+    };
+
+    const handleFacebook = () => {
+        window.open(
+            `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(
+                window.location.href
+            )}`,
+            "_blank"
+        );
+    };
+
+    const handleInstagram = async () => {
+        await navigator.clipboard.writeText(window.location.href);
+        toast.success("Instagram direct sharing available nahi hai. Link copied.");
+    };
+
+    const handleNativeShare = async () => {
+        if (navigator.share) {
+            await navigator.share({
+                title: product.title,
+                text: product.desc,
+                url: window.location.href,
+            });
+        } else {
+            setShowShare(!showShare);
+        }
+    };
+
+    useEffect(() => {
+        const close = (e) => {
+            if (
+                shareRef.current &&
+                !shareRef.current.contains(e.target)
+            ) {
+                setShowShare(false);
+            }
+        };
+
+        document.addEventListener("mousedown", close);
+
+        return () =>
+            document.removeEventListener("mousedown", close);
+    }, []);
+
     if (!product) {
         return (
             <section className="py-10 md:py-20 bg-slate-50">
@@ -247,38 +336,123 @@ export default function ProductDetails({ slug }) {
                 {/* Top Section */}
 
                 <div className="grid lg:grid-cols-2 gap-12">
-
                     {/* Product Image */}
 
-                    <div className="relative h-[340px] sm:h-[420px] md:h-[500px] lg:h-[580px] rounded-[24px] md:rounded-[36px] overflow-hidden bg-white shadow-[0_25px_80px_rgba(0,0,0,0.12)]">
-                        {!imageLoaded && (
-                            <div className="absolute inset-0 overflow-hidden bg-slate-100">
+                    <div>
 
-                                <div className="absolute inset-0 animate-pulse bg-slate-200" />
+                        <div className="relative h-[340px] sm:h-[420px] md:h-[500px] lg:h-[580px] rounded-[24px] md:rounded-[36px] overflow-hidden bg-white shadow-[0_25px_80px_rgba(0,0,0,0.12)]">
 
-                                <div
-                                    className="absolute inset-0 -translate-x-full animate-[shimmer_1.8s_infinite]"
-                                    style={{
-                                        background:
-                                            "linear-gradient(90deg, transparent, rgba(255,255,255,0.8), transparent)",
+                            {selectedMedia === "video" && product.video ? (
+
+                                <video
+                                    controls
+                                    autoPlay
+                                    className="w-full h-full object-contain p-6"
+                                >
+                                    <source
+                                        src={product.video}
+                                        type="video/mp4"
+                                    />
+                                </video>
+
+                            ) : (
+
+                                <>
+                                    {!imageLoaded && (
+                                        <div className="absolute inset-0 bg-slate-100 animate-pulse" />
+                                    )}
+
+                                    <Image
+                                        src={selectedImage || product.image}
+                                        alt={product.title}
+                                        fill
+                                        priority
+                                        onLoad={() => setImageLoaded(true)}
+                                        className={`object-contain p-4 transition duration-500 ${imageLoaded
+                                            ? "opacity-100"
+                                            : "opacity-0"
+                                            }`}
+                                    />
+                                </>
+
+                            )}
+
+                        </div>
+
+                        <div className="flex flex-wrap gap-3 mt-5">
+
+                            {(product.images?.length
+                                ? product.images
+                                : [product.image]
+                            ).map((img, index) => (
+
+                                <button
+                                    key={index}
+                                    onClick={() => {
+                                        setSelectedImage(img);
+                                        setSelectedMedia("image");
                                     }}
-                                />
+                                    className={`w-20 h-20 rounded-xl overflow-hidden border-2 ${selectedMedia === "image" &&
+                                        selectedImage === img
+                                        ? "border-sky-600"
+                                        : "border-gray-200"
+                                        }`}
+                                >
 
-                            </div>
-                        )}
+                                    <Image
+                                        src={img}
+                                        alt=""
+                                        width={80}
+                                        height={80}
+                                        className="w-full h-full object-cover"
+                                    />
 
-                        <Image
-                            src={product.image}
-                            alt={product.title}
-                            fill
-                            priority
-                            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 70vw, 50vw"
-                            onLoad={() => setImageLoaded(true)}
-                            className={`object-contain p-2 sm:p-4 md:p-6 hover:scale-105 transition-all duration-500 ${imageLoaded
-                                ? "opacity-100"
-                                : "opacity-0"
-                                }`}
-                        />
+                                </button>
+
+                            ))}
+
+                            {product.video && (
+
+                                <button
+                                    onClick={() =>
+                                        setSelectedMedia("video")
+                                    }
+                                    className={`w-20 h-20 rounded-xl border-2 flex flex-col items-center justify-center ${selectedMedia === "video"
+                                        ? "border-sky-600"
+                                        : "border-gray-200"
+                                        }`}
+                                >
+
+                                    <FaPlay size={20} />
+
+                                    <span className="text-xs mt-1">
+                                        Video
+                                    </span>
+
+                                </button>
+
+                            )}
+
+                            {product.pdf && (
+
+                                <a
+                                    href={product.pdf}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="w-20 h-20 rounded-xl border flex flex-col items-center justify-center hover:bg-slate-100"
+                                >
+
+                                    📄
+
+                                    <span className="text-xs">
+                                        PDF
+                                    </span>
+
+                                </a>
+
+                            )}
+
+                        </div>
 
                     </div>
 
@@ -286,9 +460,67 @@ export default function ProductDetails({ slug }) {
 
                     <div>
 
-                        <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold leading-tight text-slate-900">
-                            {product.title}
-                        </h1>
+                        <div className="flex justify-between items-start gap-4 relative">
+
+                            <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold leading-tight text-slate-900">
+                                {product.title}
+                            </h1>
+
+                            <div
+                                ref={shareRef}
+                                className="relative"
+                            >
+
+                                <button
+                                    onClick={handleNativeShare}
+                                    className="w-12 h-12 rounded-full border bg-white shadow flex items-center justify-center hover:bg-slate-100"
+                                >
+                                    <FaShareAlt size={18} />
+                                </button>
+
+                                {showShare && (
+
+                                    <div className="absolute right-0 top-14 w-56 bg-white rounded-xl shadow-xl border p-2 z-50">
+
+                                        <button
+                                            onClick={handleCopy}
+                                            className="w-full text-left px-3 py-2 hover:bg-slate-100 rounded flex items-center gap-2"
+                                        >
+                                            <FaLink />
+                                            Copy Link
+                                        </button>
+
+                                        <button
+                                            onClick={handleWhatsapp}
+                                            className="w-full text-left px-3 py-2 hover:bg-slate-100 rounded flex items-center gap-2"
+                                        >
+                                            <FaWhatsapp className="text-green-600" />
+                                            WhatsApp
+                                        </button>
+
+                                        <button
+                                            onClick={handleFacebook}
+                                            className="w-full text-left px-3 py-2 hover:bg-slate-100 rounded flex items-center gap-2"
+                                        >
+                                            <FaFacebook className="text-blue-600" />
+                                            Facebook
+                                        </button>
+
+                                        <button
+                                            onClick={handleInstagram}
+                                            className="w-full text-left px-3 py-2 hover:bg-slate-100 rounded flex items-center gap-2"
+                                        >
+                                            <FaInstagram className="text-pink-600" />
+                                            Instagram
+                                        </button>
+
+                                    </div>
+
+                                )}
+
+                            </div>
+
+                        </div>
 
                         <div className="mt-6 md:mt-8 bg-white p-5 sm:p-6 md:p-8 rounded-[24px] md:rounded-[30px] shadow-[0_20px_60px_rgba(0,0,0,0.08)] space-y-4">
 
