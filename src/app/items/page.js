@@ -149,7 +149,7 @@ export default function ProductsPage() {
           );
 
         }
-
+        console.log("ALL PRODUCTS", allProducts);
         setProducts(allProducts);
 
       } catch (err) {
@@ -418,16 +418,10 @@ p-4 lg:p-6
                     </button>
 
                     <div
-                      className="overflow-hidden transition-all duration-300"
-                      style={{
-                        maxHeight:
-                          openedCategory ===
-                            category
-                            ? groupedProducts[
-                              category
-                            ].length * 48
-                            : 0,
-                      }}
+                      className={`overflow-y-auto transition-all duration-300 ${openedCategory === category
+                        ? "max-h-72"
+                        : "max-h-0 overflow-hidden"
+                        } custom-scrollbar`}
                     >
 
                       {groupedProducts[
@@ -542,32 +536,28 @@ p-4 lg:p-6
 
                             <div className="relative h-[180px] sm:h-[220px] rounded-2xl lg:rounded-3xl overflow-hidden bg-slate-100">
 
-                              {!loadedImages[
-                                product.uid
-                              ] && (
-                                  <div className="absolute inset-0 bg-gray-200 animate-pulse" />
-                                )}
+                              {!loadedImages[product.uid] && (
+                                <div className="absolute inset-0 bg-gray-200 animate-pulse" />
+                              )}
 
-                              <Image
+                              <img
                                 src={
+                                  product.images?.[0] ||
                                   product.image ||
                                   "/placeholder.jpg"
                                 }
                                 alt={product.title}
-                                fill
-                                sizes="240px"
                                 onLoad={() =>
-                                  setLoadedImages(
-                                    (prev) => ({
-                                      ...prev,
-                                      [product.uid]:
-                                        true,
-                                    })
-                                  )
+                                  setLoadedImages((prev) => ({
+                                    ...prev,
+                                    [product.uid]: true,
+                                  }))
                                 }
-                                className={`object-contain p-5 transition duration-500 ${loadedImages[
-                                  product.uid
-                                ]
+                                onError={(e) => {
+                                  console.log("IMAGE ERROR:", e.currentTarget.src);
+                                  e.currentTarget.src = "/placeholder.jpg";
+                                }}
+                                className={`w-full h-full object-contain p-5 transition duration-500 ${loadedImages[product.uid]
                                   ? "opacity-100"
                                   : "opacity-0"
                                   }`}
@@ -644,7 +634,17 @@ p-4 lg:p-6
                                     ? `/${district}/items/${product.slug}`
                                     : `/items/${product.slug}`
                                 }
-                                className="px-8 py-4 rounded-2xl bg-sky-700 text-white font-semibold hover:bg-sky-800 transition whitespace-nowrap"
+                                onClick={() => {
+                                  console.log("CLICKED");
+                                  console.log("SLUG:", product.slug);
+                                  console.log(
+                                    "URL:",
+                                    district
+                                      ? `/${district}/items/${product.slug}`
+                                      : `/items/${product.slug}`
+                                  );
+                                }}
+                                className="px-8 py-4 rounded-2xl bg-sky-700 text-white"
                               >
                                 Get Quote
                               </Link>

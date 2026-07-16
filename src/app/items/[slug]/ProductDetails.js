@@ -6,7 +6,6 @@ import toast from "react-hot-toast";
 
 import { usePathname } from "next/navigation";
 
-
 import {
     FaPlay,
     FaShareAlt,
@@ -19,11 +18,17 @@ import {
 import {
     doc,
     getDoc,
+    getDocs,
     addDoc,
     collection,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-
+const makeSlug = (text = "") =>
+    text
+        .toLowerCase()
+        .trim()
+        .replace(/[^a-z0-9\s-]/g, "")
+        .replace(/\s+/g, "-");
 export default function ProductDetails({ slug }) {
     const [product, setProduct] = useState(null);
     const [imageLoaded, setImageLoaded] = useState(false);
@@ -58,6 +63,8 @@ export default function ProductDetails({ slug }) {
     useEffect(() => {
         const loadProduct = async () => {
             try {
+
+                // NORMAL PRODUCTS
                 const snap = await getDoc(
                     doc(
                         db,
@@ -68,26 +75,84 @@ export default function ProductDetails({ slug }) {
                     )
                 );
 
-                if (!snap.exists()) return;
+                let allProducts = [];
 
-                const products =
-                    snap.data().products || [];
+                if (snap.exists()) {
+                    allProducts = (snap.data().products || []).map((item) => ({
+                        ...item,
+                        slug:
+                            item.slug ||
+                            item.productSlug ||
+                            makeSlug(item.title),
+                    }));
+                }
 
-                const found = products.find(
+                // CATEGORY PRODUCTS
+                const categorySnap = await getDocs(
+                    collection(
+                        db,
+                        "websites",
+                        "centralbiomedicals",
+                        "pages",
+                        "categoryproducts",
+                        "categories"
+                    )
+                );
+
+                categorySnap.forEach((docSnap) => {
+                    const data = docSnap.data();
+
+                    if (data.products?.length) {
+                        allProducts.push(
+                            ...(data.products || []).map((item) => ({
+                                ...item,
+                                slug:
+                                    item.slug ||
+                                    item.productSlug ||
+                                    makeSlug(item.title),
+                            }))
+                        );
+                    }
+                });
+
+                const found = allProducts.find(
                     (p) => p.slug === slug
+                );
+                console.log("URL SLUG:", slug);
+
+                allProducts.forEach((p) => {
+                    console.log("PRODUCT:", p.title);
+                    console.log("PRODUCT SLUG:", p.slug);
+                });
+                console.log("SLUG FROM URL:", slug);
+                console.log(
+                    "TOTAL PRODUCTS:",
+                    allProducts.length
+                );
+                console.log(
+                    "FOUND PRODUCT:",
+                    found
                 );
 
                 setProduct(found || null);
 
                 if (found) {
-                    if (found.images?.length > 0) {
-                        setSelectedImage(found.images[0]);
+
+                    if (
+                        found.images?.length > 0
+                    ) {
+                        setSelectedImage(
+                            found.images[0]
+                        );
                     } else {
-                        setSelectedImage(found.image);
+                        setSelectedImage(
+                            found.image || ""
+                        );
                     }
 
                     setSelectedMedia("image");
                 }
+
             } catch (error) {
                 console.error(error);
             }
