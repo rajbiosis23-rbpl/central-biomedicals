@@ -136,21 +136,7 @@ Product URL:
 
 ${DOMAIN}/items/${product.slug || product.id}
 
-Images:
 
-${(product.images?.length
-                                ? product.images.map((img, index) => `${index + 1}. ${img}`).join("\n")
-                                : "No Images")
-                            }
-
-Video:
-
-${product.video || ""}
-
-PDF:
-
-${product.pdf || ""}
-       Keywords
 
 ${[product.title, product.brand, product.category, product.model,
                             product.instrument,
