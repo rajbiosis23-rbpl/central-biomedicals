@@ -21,13 +21,18 @@ import {
 import { db } from "@/lib/firebase";
 import { fetchFullCatalog } from "@/lib/data-fetcher";
 
-export default function ProductDetails({ slug }) {
-    const [product, setProduct] = useState(null);
+export default function ProductDetails({ slug, product: initialProduct }) {
+    const [product, setProduct] = useState(initialProduct || null);
     const [imageLoaded, setImageLoaded] = useState(false);
-    const [selectedImage, setSelectedImage] = useState("");
+    const [selectedImage, setSelectedImage] = useState(() => {
+        if (initialProduct) {
+            return initialProduct.images?.length > 0 ? initialProduct.images[0] : (initialProduct.image || "");
+        }
+        return "";
+    });
     const [selectedMedia, setSelectedMedia] = useState("image");
     const [showShare, setShowShare] = useState(false);
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(!initialProduct);
 
     const shareRef = useRef();
     const [form, setForm] = useState({
@@ -44,6 +49,14 @@ export default function ProductDetails({ slug }) {
     const cityName = city.charAt(0).toUpperCase() + city.slice(1);
 
     useEffect(() => {
+        if (initialProduct) {
+            setProduct(initialProduct);
+            setSelectedImage(initialProduct.images?.length > 0 ? initialProduct.images[0] : (initialProduct.image || ""));
+            setSelectedMedia("image");
+            setLoading(false);
+            return;
+        }
+
         const loadProduct = async () => {
             try {
                 setLoading(true);
@@ -68,7 +81,7 @@ export default function ProductDetails({ slug }) {
         };
 
         loadProduct();
-    }, [slug]);
+    }, [slug, initialProduct]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -297,6 +310,7 @@ export default function ProductDetails({ slug }) {
                                         src={selectedImage || product.image || "/placeholder.jpg"}
                                         alt={product.title}
                                         onLoad={() => setImageLoaded(true)}
+                                        decoding="async"
                                         className={`w-full h-full object-contain p-4 transition duration-500 ${imageLoaded
                                             ? "opacity-100"
                                             : "opacity-0"
@@ -329,6 +343,8 @@ export default function ProductDetails({ slug }) {
                                     <img
                                         src={img}
                                         alt=""
+                                        decoding="async"
+                                        loading="lazy"
                                         className="w-full h-full object-cover"
                                         onError={(e) => {
                                             e.currentTarget.src = "/placeholder.jpg";

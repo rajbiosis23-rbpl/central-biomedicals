@@ -1,4 +1,5 @@
 import ProductDetails from "./ProductDetails";
+import { fetchFullCatalog } from "@/lib/data-fetcher-server";
 
 export async function generateMetadata({ params }) {
     const { slug } = await params;
@@ -79,6 +80,8 @@ export async function generateMetadata({ params }) {
 
 export default async function Page({ params }) {
     const { slug } = await params;
+    const allProducts = await fetchFullCatalog();
+    const product = allProducts.find((p) => p.slug === slug) || null;
 
-    return <ProductDetails slug={slug} />;
+    return <ProductDetails slug={slug} product={product} />;
 }

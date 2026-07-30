@@ -52,6 +52,7 @@ export async function fetchFullCatalog() {
   }
 
   catalogPromise = (async () => {
+    const startTime = performance.now();
     try {
       // 1. Fetch categories
       const categorySnap = await getDocs(
@@ -151,6 +152,9 @@ export async function fetchFullCatalog() {
       } catch (oldErr) {
         console.error("Error fetching legacy products:", oldErr);
       }
+
+      const duration = performance.now() - startTime;
+      console.log(`[data-fetcher] Raw Firestore fetchFullCatalog completed in ${duration.toFixed(2)}ms`);
 
       return allProducts;
     } catch (err) {

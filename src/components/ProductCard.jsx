@@ -1,11 +1,7 @@
-"use client";
-
-import React, { useState } from "react";
+import React from "react";
 import Link from "next/link";
 
 const ProductCard = React.memo(function ProductCard({ product, district }) {
-  const [imageLoaded, setImageLoaded] = useState(false);
-
   return (
     <div
       id={product.slug}
@@ -14,17 +10,12 @@ const ProductCard = React.memo(function ProductCard({ product, district }) {
       <div className="grid grid-cols-1 lg:grid-cols-[240px_1fr_180px] gap-5 lg:gap-8 items-center">
         {/* Image */}
         <div className="relative h-[180px] sm:h-[220px] rounded-2xl lg:rounded-3xl overflow-hidden bg-slate-100">
-          {!imageLoaded && (
-            <div className="absolute inset-0 bg-gray-200 animate-pulse" />
-          )}
           <img
             src={product.images?.[0] || product.image || "/placeholder.jpg"}
             alt={product.title}
             loading="lazy"
-            onLoad={() => setImageLoaded(true)}
-            className={`w-full h-full object-contain p-5 transition duration-500 ${
-              imageLoaded ? "opacity-100" : "opacity-0"
-            }`}
+            decoding="async"
+            className="w-full h-full object-contain p-5"
             onError={(e) => {
               e.currentTarget.src = "/placeholder.jpg";
             }}
