@@ -2,12 +2,11 @@
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
-  doc,
-  getDoc,
   addDoc,
   collection,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { fetchContactData, fetchDistrictData } from "@/lib/data-fetcher";
 import toast from "react-hot-toast";
 import {
   Mail,
@@ -21,60 +20,48 @@ import CTASection from "@/components/CTASection";
 
 export default function ContactPage() {
   const [loading, setLoading] = useState(true);
-  const [districtData, setDistrictData] =
-    useState(null);
-  const [contactInfo, setContactInfo] =
-    useState([]);
+  const [districtData, setDistrictData] = useState(null);
+  const [contactInfo, setContactInfo] = useState([]);
+  const [submitting, setSubmitting] = useState(false);
+  const [form, setForm] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    subject: "",
+    message: "",
+  });
 
-  const [submitting, setSubmitting] =
-    useState(false);
   const pathname = usePathname();
+  const pathParts = pathname.split("/").filter(Boolean);
+  const currentDistrict = pathParts.length > 0 && pathParts[0] !== "contact" ? pathParts[0] : null;
 
-  const pathParts = pathname
-    .split("/")
-    .filter(Boolean);
-
-  const currentDistrict =
-    pathParts.length > 0
-      ? pathParts[0]
-      : null;
   const handleChange = (e) => {
     setForm({
       ...form,
       [e.target.name]: e.target.value,
     });
   };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    const emailRegex =
-      /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-    const phoneRegex =
-      /^[6-9]\d{9}$/;
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const phoneRegex = /^[6-9]\d{9}$/;
 
     if (!form.name.trim()) {
-      return toast.error(
-        "Name is required"
-      );
+      return toast.error("Name is required");
     }
 
     if (!emailRegex.test(form.email)) {
-      return toast.error(
-        "Enter valid email"
-      );
+      return toast.error("Enter valid email");
     }
 
     if (!phoneRegex.test(form.phone)) {
-      return toast.error(
-        "Enter valid mobile number"
-      );
+      return toast.error("Enter valid mobile number");
     }
 
     if (!form.message.trim()) {
-      return toast.error(
-        "Message is required"
-      );
+      return toast.error("Message is required");
     }
 
     try {
@@ -93,9 +80,7 @@ export default function ContactPage() {
         }
       );
 
-      toast.success(
-        "Message submitted successfully"
-      );
+      toast.success("Message submitted successfully");
 
       setForm({
         name: "",
@@ -105,66 +90,38 @@ export default function ContactPage() {
         message: "",
       });
     } catch (err) {
-      console.error(err);
-      toast.error(
-        "Something went wrong"
-      );
+      console.error("Error submitting contact query:", err);
+      toast.error("Something went wrong");
     } finally {
       setSubmitting(false);
     }
   };
-  const [form, setForm] = useState({
-    name: "",
-    email: "",
-    phone: "",
-    subject: "",
-    message: "",
-  });
+
   useEffect(() => {
     const loadDistrict = async () => {
       if (!currentDistrict) return;
-
       try {
-        const snap = await getDoc(
-          doc(
-            db,
-            "websites",
-            "centralbiomedicals",
-            "districts",
-            currentDistrict
-          )
-        );
-
-        if (snap.exists()) {
-          setDistrictData(snap.data());
+        const data = await fetchDistrictData(currentDistrict);
+        if (data) {
+          setDistrictData(data);
         }
       } catch (err) {
-        console.log(err);
+        console.error("Error loading district in contact page:", err);
       }
     };
 
     loadDistrict();
   }, [currentDistrict]);
+
   useEffect(() => {
     const loadContact = async () => {
       try {
-        const snap = await getDoc(
-          doc(
-            db,
-            "websites",
-            "centralbiomedicals",
-            "pages",
-            "contact"
-          )
-        );
-
-        if (snap.exists()) {
-          setContactInfo(
-            snap.data().contactInfo || []
-          );
+        const data = await fetchContactData();
+        if (data) {
+          setContactInfo(data.contactInfo || []);
         }
       } catch (err) {
-        console.log(err);
+        console.error("Error loading contact info in contact page:", err);
       } finally {
         setLoading(false);
       }
@@ -173,270 +130,197 @@ export default function ContactPage() {
     loadContact();
   }, []);
 
+  const phone = contactInfo.find((x) => x.label === "Phone Number")?.value || "";
+  const email = contactInfo.find((x) => x.label === "Email Address")?.value || "";
+  const address = contactInfo.find((x) => x.label === "Office Address")?.value || "";
+  const hours = contactInfo.find((x) => x.label === "Working Hours")?.value || "";
 
+  const dynamicAddress = districtData
+    ? `${districtData.district}, ${districtData.state}, India`
+    : address;
 
-  const phone =
-    contactInfo.find(
-      (x) => x.label === "Phone Number"
-    )?.value || "";
-
-  const email =
-    contactInfo.find(
-      (x) => x.label === "Email Address"
-    )?.value || "";
-
-  const address =
-    contactInfo.find(
-      (x) => x.label === "Office Address"
-    )?.value || "";
-
-  const hours =
-    contactInfo.find(
-      (x) => x.label === "Working Hours"
-    )?.value || "";
-
-  const dynamicAddress =
-    districtData
-      ? `${districtData.district}, ${districtData.state}, India`
-      : address;
-
-  const mapAddress = encodeURIComponent(
-    dynamicAddress
-  );
   if (loading) {
     return (
-      <section className="section-padding">
-        <div className="container-custom">
-
-          <div className="grid lg:grid-cols-2 gap-12">
-
-            <div>
-              <div className="h-12 w-64 bg-slate-200 rounded animate-pulse mb-8" />
-
-              {[...Array(4)].map((_, i) => (
-                <div
-                  key={i}
-                  className="h-28 bg-slate-200 rounded-3xl animate-pulse mb-6"
-                />
-              ))}
+      <>
+        <div className="h-[280px] bg-slate-100 animate-pulse" />
+        <section className="section-padding bg-white">
+          <div className="container-custom">
+            <div className="grid lg:grid-cols-2 gap-16 animate-pulse">
+              <div className="space-y-6">
+                <div className="h-10 w-2/3 bg-slate-200 rounded" />
+                <div className="h-6 w-full bg-slate-200 rounded" />
+                <div className="space-y-4">
+                  {[...Array(4)].map((_, i) => (
+                    <div key={i} className="h-12 bg-slate-100 rounded-xl" />
+                  ))}
+                </div>
+              </div>
+              <div className="bg-slate-50 h-[500px] rounded-[32px]" />
             </div>
-
-            <div className="bg-white p-10 rounded-3xl">
-              {[...Array(6)].map((_, i) => (
-                <div
-                  key={i}
-                  className="h-14 bg-slate-200 rounded-2xl animate-pulse mb-5"
-                />
-              ))}
-            </div>
-
           </div>
-
-        </div>
-      </section>
+        </section>
+      </>
     );
   }
+
   return (
     <>
-      {/* Banner */}
       <PageBanner
-        title="Contact Us"
-        subtitle="Get in touch with Central Biomedicals for premium diagnostic and biomedical solutions."
+        title={districtData ? `Contact Us in ${districtData.district}` : "Contact Us"}
+        subtitle="Get in touch with Central Biomedicals for reliable diagnostic and laboratory equipment support."
       />
 
-      {/* Contact Section */}
       <section className="section-padding bg-white">
-        <div className="container-custom grid lg:grid-cols-2 gap-14">
-
-          {/* Left Info */}
+        <div className="container-custom grid lg:grid-cols-2 gap-16 items-start">
           <div>
-
-            <span className="inline-block bg-sky-100 text-sky-700 px-5 py-2 rounded-full font-semibold mb-5">
-              Contact Information
-            </span>
-
-            <h2 className="section-title">
-              Let’s Start a Conversation
+            <h2 className="text-4xl font-bold text-slate-900 leading-tight">
+              Get in Touch
             </h2>
-
-            <p className="section-subtitle">
-              Reach out to us for
-              healthcare consultation,
-              biomedical products, and
-              advanced diagnostic support.
+            <p className="mt-5 text-slate-600 leading-8 text-lg">
+              Have questions about our biomedical instruments, pricing, or support services?
+              Fill out the form or reach us directly.
             </p>
 
-            {/* Contact Cards */}
-            <div className="space-y-6 mt-10">
-
-              <div className="flex items-start gap-5 bg-slate-50 p-6 rounded-[28px] border border-slate-100">
-                <div className="w-14 h-14 rounded-2xl bg-sky-100 flex items-center justify-center text-sky-700">
-                  <Phone size={24} />
-                </div>
-
-                <div>
-                  <h4 className="font-semibold text-lg">
-                    Phone Number
-                  </h4>
-
-                  <p className="text-slate-600 mt-2">
-                    {phone}
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-5 bg-slate-50 p-6 rounded-[28px] border border-slate-100">
-                <div className="w-14 h-14 rounded-2xl bg-sky-100 flex items-center justify-center text-sky-700">
-                  <Mail size={24} />
-                </div>
-
-                <div>
-                  <h4 className="font-semibold text-lg">
-                    Email Address
-                  </h4>
-
-                  <p className="text-slate-600 mt-2">
-                    {email}
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-5 bg-slate-50 p-6 rounded-[28px] border border-slate-100">
-                <div className="w-14 h-14 rounded-2xl bg-sky-100 flex items-center justify-center text-sky-700">
+            <div className="mt-10 space-y-6">
+              <div className="flex items-start gap-4">
+                <div className="w-14 h-14 rounded-2xl bg-sky-100 text-sky-700 flex items-center justify-center shrink-0">
                   <MapPin size={24} />
                 </div>
-
                 <div>
-                  <h4 className="font-semibold text-lg">
-                    Office Address
-                  </h4>
-
-                  <p className="text-slate-600 mt-2">
-                    {dynamicAddress}
-                  </p>
+                  <h4 className="font-semibold text-lg">Office Address</h4>
+                  <p className="text-slate-600 mt-1 leading-7">{dynamicAddress}</p>
                 </div>
               </div>
 
-              <div className="flex items-start gap-5 bg-slate-50 p-6 rounded-[28px] border border-slate-100">
-                <div className="w-14 h-14 rounded-2xl bg-sky-100 flex items-center justify-center text-sky-700">
-                  <Clock3 size={24} />
+              <div className="flex items-start gap-4">
+                <div className="w-14 h-14 rounded-2xl bg-sky-100 text-sky-700 flex items-center justify-center shrink-0">
+                  <Phone size={24} />
                 </div>
-
                 <div>
-                  <h4 className="font-semibold text-lg">
-                    Working Hours
-                  </h4>
-
-                  <p className="text-slate-600 mt-2">
-                    {hours}
-                  </p>
+                  <h4 className="font-semibold text-lg">Phone Number</h4>
+                  <p className="text-slate-600 mt-1 leading-7">{phone}</p>
                 </div>
               </div>
 
+              <div className="flex items-start gap-4">
+                <div className="w-14 h-14 rounded-2xl bg-sky-100 text-sky-700 flex items-center justify-center shrink-0">
+                  <Mail size={24} />
+                </div>
+                <div>
+                  <h4 className="font-semibold text-lg">Email Address</h4>
+                  <p className="text-slate-600 mt-1 leading-7">{email}</p>
+                </div>
+              </div>
+
+              {hours && (
+                <div className="flex items-start gap-4">
+                  <div className="w-14 h-14 rounded-2xl bg-sky-100 text-sky-700 flex items-center justify-center shrink-0">
+                    <Clock3 size={24} />
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-lg">Working Hours</h4>
+                    <p className="text-slate-600 mt-1 leading-7">{hours}</p>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
-          {/* Right Form */}
-          <div className="bg-white rounded-[40px] p-8 lg:p-10 shadow-[0_20px_60px_rgba(0,0,0,0.08)]">
-
-            <h3 className="text-3xl font-bold text-slate-900">
-              Send Us Message
+          <div className="bg-slate-50 border border-slate-100 p-8 sm:p-10 rounded-[36px] shadow-sm">
+            <h3 className="text-2xl font-bold text-slate-900 mb-6">
+              Send Message
             </h3>
 
-            <p className="text-slate-500 mt-3">
-              Fill out the form and our
-              team will contact you soon.
-            </p>
+            <form onSubmit={handleSubmit} className="space-y-5">
+              <div>
+                <label className="text-sm font-semibold text-slate-700 block mb-2">
+                  Full Name
+                </label>
+                <input
+                  type="text"
+                  name="name"
+                  placeholder="Your Name"
+                  value={form.name}
+                  onChange={handleChange}
+                  className="w-full bg-white border border-slate-200 rounded-2xl px-5 py-4 outline-none focus:ring-2 focus:ring-sky-600"
+                />
+              </div>
 
-            <form
-              onSubmit={handleSubmit}
-              className="mt-8 space-y-5"
-            >
+              <div className="grid sm:grid-cols-2 gap-5">
+                <div>
+                  <label className="text-sm font-semibold text-slate-700 block mb-2">
+                    Email Address
+                  </label>
+                  <input
+                    type="email"
+                    name="email"
+                    placeholder="Your Email"
+                    value={form.email}
+                    onChange={handleChange}
+                    className="w-full bg-white border border-slate-200 rounded-2xl px-5 py-4 outline-none focus:ring-2 focus:ring-sky-600"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-semibold text-slate-700 block mb-2">
+                    Phone Number
+                  </label>
+                  <input
+                    type="tel"
+                    name="phone"
+                    placeholder="Your Phone"
+                    maxLength={10}
+                    value={form.phone}
+                    onChange={(e) =>
+                      setForm({
+                        ...form,
+                        phone: e.target.value.replace(/\D/g, ""),
+                      })
+                    }
+                    className="w-full bg-white border border-slate-200 rounded-2xl px-5 py-4 outline-none focus:ring-2 focus:ring-sky-600"
+                  />
+                </div>
+              </div>
 
-              <input
-                type="text"
-                name="name"
-                placeholder="Full Name"
-                value={form.name}
-                onChange={handleChange}
-                className="w-full border border-slate-200 rounded-2xl px-5 py-4 outline-none focus:border-sky-600"
-              />
+              <div>
+                <label className="text-sm font-semibold text-slate-700 block mb-2">
+                  Subject
+                </label>
+                <input
+                  type="text"
+                  name="subject"
+                  placeholder="Query Topic"
+                  value={form.subject}
+                  onChange={handleChange}
+                  className="w-full bg-white border border-slate-200 rounded-2xl px-5 py-4 outline-none focus:ring-2 focus:ring-sky-600"
+                />
+              </div>
 
-              <input
-                type="email"
-                name="email"
-                placeholder="Email Address"
-                value={form.email}
-                onChange={handleChange}
-                className="w-full border border-slate-200 rounded-2xl px-5 py-4 outline-none focus:border-sky-600"
-              />
-
-              <input
-                type="tel"
-                name="phone"
-                placeholder="Phone Number"
-                maxLength={10}
-                value={form.phone}
-                onChange={(e) =>
-                  setForm({
-                    ...form,
-                    phone: e.target.value.replace(/\D/g, ""),
-                  })
-                }
-                className="w-full border border-slate-200 rounded-2xl px-5 py-4 outline-none focus:border-sky-600"
-              />
-
-              <input
-                type="text"
-                name="subject"
-                placeholder="Subject"
-                value={form.subject}
-                onChange={handleChange}
-                className="w-full border border-slate-200 rounded-2xl px-5 py-4 outline-none focus:border-sky-600"
-              />
-
-              <textarea
-                rows={5}
-                name="message"
-                placeholder="Your Message"
-                value={form.message}
-                onChange={handleChange}
-                className="w-full border border-slate-200 rounded-2xl px-5 py-4 outline-none focus:border-sky-600 resize-none"
-              />
+              <div>
+                <label className="text-sm font-semibold text-slate-700 block mb-2">
+                  Message
+                </label>
+                <textarea
+                  name="message"
+                  rows={5}
+                  placeholder="How can we help you?"
+                  value={form.message}
+                  onChange={handleChange}
+                  className="w-full bg-white border border-slate-200 rounded-2xl px-5 py-4 outline-none focus:ring-2 focus:ring-sky-600 resize-none"
+                />
+              </div>
 
               <button
                 type="submit"
                 disabled={submitting}
-                className="w-full bg-sky-700 text-white py-4 rounded-2xl font-semibold hover:bg-sky-800 transition"
+                className="w-full bg-sky-700 text-white font-semibold py-4 rounded-2xl hover:bg-sky-800 transition disabled:opacity-50"
               >
-                {submitting
-                  ? "Submitting..."
-                  : "Send Message"}
+                {submitting ? "Submitting..." : "Send Message"}
               </button>
-
             </form>
           </div>
         </div>
       </section>
 
-      {/* Google Map */}
-      <section className="pb-24 bg-white">
-        <div className="container-custom">
-          <div className="rounded-[40px] overflow-hidden border border-slate-100 card-shadow">
-
-            <iframe
-              src={`https://maps.google.com/maps?q=${mapAddress}&z=13&output=embed`}
-              width="100%"
-              height="500"
-              loading="lazy"
-              className="border-0 w-full"
-            ></iframe>
-
-          </div>
-        </div>
-      </section>
-
-      {/* CTA */}
       <CTASection />
     </>
   );

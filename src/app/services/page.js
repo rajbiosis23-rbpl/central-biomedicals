@@ -13,37 +13,29 @@ import SectionTitle from "@/components/SectionTitle";
 import ServiceCard from "@/components/ServiceCard";
 import CTASection from "@/components/CTASection";
 import { useEffect, useState } from "react";
-import { doc, getDoc } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { fetchServicesData } from "@/lib/data-fetcher";
+
 export default function ServicesPage() {
   const [services, setServices] = useState([]);
   const [loading, setLoading] = useState(true);
   const icons = [
-    <Microscope size={30} />,
-    <FlaskConical size={30} />,
-    <ShieldCheck size={30} />,
-    <Stethoscope size={30} />,
-    <Wrench size={30} />,
-    <Activity size={30} />,
+    <Microscope key="micro" size={30} />,
+    <FlaskConical key="flask" size={30} />,
+    <ShieldCheck key="shield" size={30} />,
+    <Stethoscope key="steth" size={30} />,
+    <Wrench key="wrench" size={30} />,
+    <Activity key="activity" size={30} />,
   ];
+  
   useEffect(() => {
     const fetchServices = async () => {
       try {
-        const snap = await getDoc(
-          doc(
-            db,
-            "websites",
-            "centralbiomedicals",
-            "pages",
-            "services"
-          )
-        );
-
-        if (snap.exists()) {
-          setServices(snap.data().services || []);
+        const data = await fetchServicesData();
+        if (data) {
+          setServices(data.services || []);
         }
       } catch (error) {
-        console.error(error);
+        console.error("Error loading services page:", error);
       } finally {
         setLoading(false);
       }
@@ -51,6 +43,7 @@ export default function ServicesPage() {
 
     fetchServices();
   }, []);
+
   return (
     <>
       {/* Banner */}

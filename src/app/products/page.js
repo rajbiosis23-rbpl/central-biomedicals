@@ -17,9 +17,7 @@ import PageBanner from "@/components/PageBanner";
 import SectionTitle from "@/components/SectionTitle";
 import CTASection from "@/components/CTASection";
 
-export default function ProductsPage() {
-
-  const products = [
+const products = [
 
     {
       category: "Electrolyte Reagents",
@@ -78,6 +76,7 @@ export default function ProductsPage() {
 
   ];
 
+export default function ProductsPage() {
   const [search, setSearch] =
     useState("");
 

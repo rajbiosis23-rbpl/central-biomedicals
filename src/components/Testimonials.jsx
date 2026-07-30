@@ -63,9 +63,8 @@ export default function Testimonials() {
                 ★★★★★
               </div>
 
-              {/* Review */}
               <p className="text-slate-600 leading-8 italic">
-                "{item.review}"
+                {"\"" + item.review + "\""}
               </p>
 
               {/* User */}

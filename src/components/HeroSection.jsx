@@ -4,8 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import Image from "next/image";
-import { doc, getDoc } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { fetchHomeData } from "@/lib/data-fetcher";
 
 import CBG from "../components/img/CBG.png";
 
@@ -29,12 +28,9 @@ export default function HeroSection({ city }) {
   useEffect(() => {
     const fetchHeroData = async () => {
       try {
-        const snap = await getDoc(
-          doc(db, "websites", "centralbiomedicals", "pages", "home")
-        );
-
-        if (snap.exists()) {
-          setHeroData(snap.data());
+        const data = await fetchHomeData();
+        if (data) {
+          setHeroData(data);
         }
       } catch (error) {
         console.error("Error fetching hero data:", error);
@@ -186,6 +182,7 @@ export default function HeroSection({ city }) {
               alt="Central Biomedical"
               width={1200}
               height={900}
+              priority
               className="rounded-[28px] object-cover object-[20%_center] h-[350px] sm:h-[450px] lg:h-[550px] w-full"
             />
           </div>
