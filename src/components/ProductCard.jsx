@@ -60,7 +60,7 @@ const ProductCard = React.memo(function ProductCard({ product, district }) {
                 ? `/${district}/items/${product.slug}`
                 : `/items/${product.slug}`
             }
-            className="px-8 py-4 rounded-2xl bg-sky-700 text-white font-semibold hover:bg-sky-800 transition"
+            className="px-8 py-4 rounded-2xl bg-sky-700 !text-white font-semibold hover:bg-sky-800 transition"
           >
             Get Quote
           </Link>

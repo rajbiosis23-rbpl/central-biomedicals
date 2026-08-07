@@ -169,20 +169,20 @@ export default function ProductsClient({ initialProducts = [], district = null, 
     const query = productSearch.trim().toLowerCase();
     const filtered = query
       ? initialProducts.filter((item) => {
-          const title = (item.title || "").toLowerCase();
-          const brand = (item.brand || "").toLowerCase();
-          const model = (item.model || "").toLowerCase();
-          const category = (item.category || "").toLowerCase();
-          const subCategory = (item.subCategory || "").toLowerCase();
+        const title = (item.title || "").toLowerCase();
+        const brand = (item.brand || "").toLowerCase();
+        const model = (item.model || "").toLowerCase();
+        const category = (item.category || "").toLowerCase();
+        const subCategory = (item.subCategory || "").toLowerCase();
 
-          return (
-            title.includes(query) ||
-            brand.includes(query) ||
-            model.includes(query) ||
-            category.includes(query) ||
-            subCategory.includes(query)
-          );
-        })
+        return (
+          title.includes(query) ||
+          brand.includes(query) ||
+          model.includes(query) ||
+          category.includes(query) ||
+          subCategory.includes(query)
+        );
+      })
       : initialProducts;
 
     const grouped = {};
@@ -321,7 +321,80 @@ export default function ProductsClient({ initialProducts = [], district = null, 
         title={city ? `Our Products in ${city}` : "Our Products"}
         subtitle="Explore advanced biomedical and diagnostic equipment designed for modern healthcare excellence."
       />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "MedicalEquipmentSupplier",
+            name: "Human Biomedicals",
+            url: "https://humanbiomedicals.org",
+            areaServed: city,
+            description: `Medical laboratory and hospital equipment in ${city}`,
+            address: {
+              "@type": "PostalAddress",
+              addressLocality: city,
+              addressCountry: "India",
+            },
+          }),
+        }}
+      />
 
+      <Toaster
+        position="top-right"
+        toastOptions={{
+          style: {
+            borderRadius: "14px",
+            padding: "14px 18px",
+            fontSize: "15px",
+            fontWeight: "600",
+          },
+        }}
+      />
+
+      {/* HERO */}
+
+      <section className="relative pt-32 pb-24 overflow-hidden">
+
+        <div className="absolute top-0 left-0 w-96 h-96 bg-violet-100 blur-3xl rounded-full"></div>
+
+        <div className="absolute bottom-0 right-0 w-96 h-96 bg-sky-100 blur-3xl rounded-full"></div>
+
+        <div className="max-w-7xl mx-auto px-5 relative z-10">
+
+          <div className="text-center max-w-5xl mx-auto">
+
+            <span className="inline-flex items-center rounded-full bg-violet-100 px-5 py-2 text-sm font-semibold text-violet-700">
+
+              Human Biomedicals LLP
+
+            </span>
+
+            <motion.h1
+              initial={{ opacity: 0, y: 35 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: .7 }}
+              className="mt-8 text-5xl lg:text-7xl font-bold leading-tight"
+            >
+
+              {city
+                ? `Buy Medical Laboratory Equipment in ${city}`
+                : "Medical Laboratory Equipment"}
+
+            </motion.h1>
+
+            <p className="mt-8 text-xl text-slate-600 leading-9">
+
+              Premium laboratory instruments,
+              diagnostic systems and hospital equipment.
+
+            </p>
+
+          </div>
+
+        </div>
+
+      </section>
       {/* Products */}
       <section className="section-padding bg-white">
         <div className="container-custom">
