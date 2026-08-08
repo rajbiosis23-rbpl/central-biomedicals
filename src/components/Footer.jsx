@@ -10,6 +10,7 @@ import {
   Phone,
   MapPin,
 } from "lucide-react";
+import { FaInstagram, FaFacebook } from "react-icons/fa";
 
 export default function Footer() {
   const [contactInfo, setContactInfo] = useState([]);
@@ -23,6 +24,7 @@ export default function Footer() {
     "about",
     "services",
     "products",
+    "export",
     "contact",
     "items",
   ];
@@ -66,13 +68,13 @@ export default function Footer() {
   }, [district]);
 
   const phone =
-    contactInfo.find((x) => x.label === "Phone Number")?.value || "";
+    contactInfo.find((x) => x.label === "Phone Number")?.value || "+91 9983123469";
 
   const email =
-    contactInfo.find((x) => x.label === "Email Address")?.value || "";
+    contactInfo.find((x) => x.label === "Email Address")?.value || "info@centralbiomedicals.com";
 
   const address =
-    contactInfo.find((x) => x.label === "Office Address")?.value || "";
+    contactInfo.find((x) => x.label === "Office Address")?.value || "India";
 
   const dynamicAddress = districtData
     ? `${districtData.district}, ${districtData.state}, India`
@@ -126,26 +128,48 @@ export default function Footer() {
               Delivering trusted diagnostic and biomedical solutions with
               innovation, quality, and precision healthcare support.
             </p>
+            <div className="mt-6 flex items-center gap-3">
+              <a
+                href="https://www.instagram.com/rajbiosisindia/"
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Instagram"
+                className="w-10 h-10 rounded-full bg-slate-100 text-slate-700 hover:bg-sky-600 hover:text-white flex items-center justify-center transition shadow-sm"
+              >
+                <FaInstagram size={18} />
+              </a>
+              <a
+                href="https://www.facebook.com/rajbiosispvtltd/"
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Facebook"
+                className="w-10 h-10 rounded-full bg-slate-100 text-slate-700 hover:bg-sky-600 hover:text-white flex items-center justify-center transition shadow-sm"
+              >
+                <FaFacebook size={18} />
+              </a>
+            </div>
           </div>
 
           <div>
             <h3 className="text-lg font-semibold mb-5">Quick Links</h3>
             <div className="flex flex-col gap-3 text-slate-600">
-              <LinkComponent href={makeLink("/")}>Home</LinkComponent>
-              <LinkComponent href={makeLink("/about")}>About</LinkComponent>
-              <LinkComponent href={makeLink("/services")}>Services</LinkComponent>
-              <LinkComponent href={makeLink("/items")}>Products</LinkComponent>
-              <LinkComponent href={makeLink("/contact")}>Contact</LinkComponent>
+              <LinkComponent href={makeLink("/")} className="hover:text-sky-700 transition">Home</LinkComponent>
+              <LinkComponent href={makeLink("/about")} className="hover:text-sky-700 transition">About</LinkComponent>
+              <LinkComponent href={makeLink("/services")} className="hover:text-sky-700 transition">Services</LinkComponent>
+              <LinkComponent href={makeLink("/items")} className="hover:text-sky-700 transition">Products</LinkComponent>
+              <LinkComponent href={makeLink("/export")} className="hover:text-sky-700 transition">B2B Export</LinkComponent>
+              <LinkComponent href={makeLink("/contact")} className="hover:text-sky-700 transition">Contact</LinkComponent>
             </div>
           </div>
 
           <div>
-            <h3 className="text-lg font-semibold mb-5">Services</h3>
+            <h3 className="text-lg font-semibold mb-5">Product Categories</h3>
             <div className="flex flex-col gap-3 text-slate-600">
-              <p>Diagnostic Equipment</p>
-              <p>Laboratory Solutions</p>
-              <p>Biomedical Instruments</p>
-              <p>Maintenance Support</p>
+              <LinkComponent href={makeLink("/items#hematology")} className="hover:text-sky-700 transition">Hematology Analyzers</LinkComponent>
+              <LinkComponent href={makeLink("/items#biochemistry")} className="hover:text-sky-700 transition">Biochemistry Analyzers</LinkComponent>
+              <LinkComponent href={makeLink("/items#electrolyte")} className="hover:text-sky-700 transition">Electrolyte Reagents</LinkComponent>
+              <LinkComponent href={makeLink("/items#rapid-test")} className="hover:text-sky-700 transition">Rapid Test Kits</LinkComponent>
+              <LinkComponent href={makeLink("/items")} className="hover:text-sky-700 transition">Laboratory Instruments</LinkComponent>
             </div>
           </div>
 
@@ -153,18 +177,28 @@ export default function Footer() {
             <h3 className="text-lg font-semibold mb-5">Contact Info</h3>
             <div className="space-y-4 text-slate-600">
               <div className="flex items-start gap-3">
-                <MapPin size={18} className="mt-1 text-sky-700" />
+                <MapPin size={18} className="mt-1 text-sky-700 shrink-0" />
                 <p>{dynamicAddress}</p>
               </div>
 
               <div className="flex items-center gap-3">
-                <Phone size={18} className="text-sky-700" />
-                <p>{phone}</p>
+                <Phone size={18} className="text-sky-700 shrink-0" />
+                <a href={`tel:${phone.replace(/\s+/g, "")}`} className="hover:text-sky-700 transition">{phone}</a>
               </div>
 
               <div className="flex items-center gap-3">
-                <Mail size={18} className="text-sky-700" />
-                <p>{email}</p>
+                <Mail size={18} className="text-sky-700 shrink-0" />
+                <a href={`mailto:${email}`} className="hover:text-sky-700 transition">{email}</a>
+              </div>
+
+              <div className="pt-2 flex items-center gap-3">
+                <a href="https://www.instagram.com/rajbiosisindia/" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 hover:text-sky-700 transition text-sm">
+                  <FaInstagram className="text-pink-600" size={16} /> Instagram
+                </a>
+                <span>•</span>
+                <a href="https://www.facebook.com/rajbiosispvtltd/" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 hover:text-sky-700 transition text-sm">
+                  <FaFacebook className="text-blue-600" size={16} /> Facebook
+                </a>
               </div>
             </div>
           </div>

@@ -1,139 +1,85 @@
+import { fetchFullCatalog } from "@/lib/data-fetcher-server";
 import { db } from "@/lib/firebase";
-import {
-    collection,
-    getDocs,
-    doc,
-    getDoc,
-} from "firebase/firestore";
+import { collection, getDocs } from "firebase/firestore";
 
 export default async function sitemap() {
-    const baseUrl =
-        "https://centralbiomedicals.com";
+    const baseUrl = "https://centralbiomedicals.com";
 
-    const urls = [];
-
-    // Static Pages
-    urls.push(
+    const urls = [
         {
             url: baseUrl,
             lastModified: new Date(),
+            changeFrequency: "daily",
+            priority: 1.0,
         },
         {
             url: `${baseUrl}/about`,
             lastModified: new Date(),
+            changeFrequency: "monthly",
+            priority: 0.8,
         },
         {
             url: `${baseUrl}/services`,
             lastModified: new Date(),
-        },
-        {
-            url: `${baseUrl}/contact`,
-            lastModified: new Date(),
+            changeFrequency: "monthly",
+            priority: 0.8,
         },
         {
             url: `${baseUrl}/items`,
             lastModified: new Date(),
-        }
-    );
+            changeFrequency: "daily",
+            priority: 0.9,
+        },
+        {
+            url: `${baseUrl}/export`,
+            lastModified: new Date(),
+            changeFrequency: "weekly",
+            priority: 0.9,
+        },
+        {
+            url: `${baseUrl}/contact`,
+            lastModified: new Date(),
+            changeFrequency: "monthly",
+            priority: 0.8,
+        },
+    ];
 
     try {
-        // DISTRICTS
-        const districtSnap =
-            await getDocs(
-                collection(
-                    db,
-                    "websites",
-                    "centralbiomedicals",
-                    "districts"
-                )
-            );
+        // Fetch products using the server cache catalog helper
+        const products = await fetchFullCatalog();
+        const seenProductSlugs = new Set();
 
-        const districts =
-            districtSnap.docs.map(
-                (doc) => doc.data()
-            );
+        products.forEach((product) => {
+            if (!product.slug || seenProductSlugs.has(product.slug)) return;
+            seenProductSlugs.add(product.slug);
 
-        districts.forEach((district) => {
-            const slug =
-                district.slug;
-
-            if (!slug) return;
-
-            urls.push(
-                {
-                    url: `${baseUrl}/${slug}`,
-                    lastModified:
-                        new Date(),
-                },
-                {
-                    url: `${baseUrl}/${slug}/about`,
-                    lastModified:
-                        new Date(),
-                },
-                {
-                    url: `${baseUrl}/${slug}/services`,
-                    lastModified:
-                        new Date(),
-                },
-                {
-                    url: `${baseUrl}/${slug}/contact`,
-                    lastModified:
-                        new Date(),
-                },
-                {
-                    url: `${baseUrl}/${slug}/items`,
-                    lastModified:
-                        new Date(),
-                }
-            );
+            urls.push({
+                url: `${baseUrl}/items/${product.slug}`,
+                lastModified: new Date(),
+                changeFrequency: "weekly",
+                priority: 0.8,
+            });
         });
 
-        // PRODUCTS
-        const productDoc =
-            await getDoc(
-                doc(
-                    db,
-                    "websites",
-                    "centralbiomedicals",
-                    "pages",
-                    "products"
-                )
-            );
-
-        const products =
-            productDoc.data()
-                ?.products || [];
-
-        products.forEach(
-            (product) => {
-                if (!product.slug) return;
-
-                // Main Product URL
-                urls.push({
-                    url: `${baseUrl}/items/${product.slug}`,
-                    lastModified:
-                        new Date(),
-                });
-
-                // District Product URLs
-                districts.forEach(
-                    (district) => {
-                        if (!district.slug) return;
-
-                        urls.push({
-                            url: `${baseUrl}/${district.slug}/items/${product.slug}`,
-                            lastModified:
-                                new Date(),
-                        });
-                    }
-                );
-            }
+        // Fetch district pages for local landing pages
+        const districtSnap = await getDocs(
+            collection(db, "websites", "centralbiomedicals", "districts")
         );
+
+        districtSnap.docs.forEach((doc) => {
+            const data = doc.data();
+            const slug = data.slug || doc.id;
+            if (!slug) return;
+
+            urls.push({
+                url: `${baseUrl}/${slug}`,
+                lastModified: new Date(),
+                changeFrequency: "monthly",
+                priority: 0.7,
+            });
+        });
     } catch (error) {
-        console.error(
-            "Sitemap Error:",
-            error
-        );
+        console.error("Sitemap Generation Error:", error);
     }
 
     return urls;

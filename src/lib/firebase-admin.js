@@ -7,19 +7,27 @@ const privateKey = process.env.FIREBASE_PRIVATE_KEY
   ?.replace(/^"|"$/g, "")
   .replace(/\\n/g, "\n");
 
-if (!projectId || !clientEmail || !privateKey) {
-  throw new Error("Firebase Admin environment variables are missing.");
+let db = null;
+
+if (projectId && clientEmail && privateKey) {
+  try {
+    const app =
+      getApps().length === 0
+        ? initializeApp({
+          credential: cert({
+            projectId,
+            clientEmail,
+            privateKey,
+          }),
+        })
+        : getApps()[0];
+
+    db = getFirestore(app);
+  } catch (err) {
+    console.warn("Firebase Admin init warning:", err.message);
+  }
+} else {
+  console.warn("Firebase Admin environment variables missing. Admin db disabled for static build.");
 }
 
-const app =
-  getApps().length === 0
-    ? initializeApp({
-      credential: cert({
-        projectId,
-        clientEmail,
-        privateKey,
-      }),
-    })
-    : getApps()[0];
-
-export const adminDb = getFirestore(app);
+export const adminDb = db;

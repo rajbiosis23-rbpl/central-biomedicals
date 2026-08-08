@@ -1,11 +1,17 @@
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebase-admin";
 
+export const dynamic = "force-dynamic";
+
 const WEBSITE = "centralbiomedicals";
 const DOMAIN = "https://centralbiomedicals.com";
 
 export async function GET() {
     try {
+        if (!adminDb) {
+            return new Response("Firebase Admin DB not initialized", { status: 503 });
+        }
+
         // Districts
         const districtSnap = await adminDb
             .collection("websites")

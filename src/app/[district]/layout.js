@@ -6,12 +6,12 @@ export async function generateMetadata({ params }) {
     .replace(/-/g, " ")
     .replace(/\b\w/g, (char) => char.toUpperCase());
 
-  const url = `https://centralbiomedical.com/${district}`;
+  const url = `https://centralbiomedicals.com/${district}`;
 
   return {
-    title: `Biomedical & Diagnostic Equipment Supplier in ${districtName} | Central Biomedical`,
+    title: `Biomedical & Diagnostic Equipment Supplier in ${districtName} | Central Biomedicals`,
 
-    description: `Central Biomedical supplies diagnostic machines, laboratory equipment, reagents and biomedical products in ${districtName}.`,
+    description: `Central Biomedicals supplies diagnostic machines, laboratory equipment, reagents and biomedical products in ${districtName}.`,
 
     keywords: [
       `Biomedical Equipment ${districtName}`,
@@ -31,7 +31,7 @@ export async function generateMetadata({ params }) {
     },
 
     openGraph: {
-      title: `Biomedical Equipment in ${districtName}`,
+      title: `Biomedical Equipment in ${districtName} | Central Biomedicals`,
       description: `Diagnostic laboratory equipment supplier in ${districtName}.`,
       url,
       type: "website",

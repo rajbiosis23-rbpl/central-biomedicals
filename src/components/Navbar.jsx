@@ -18,6 +18,8 @@ export default function Navbar() {
     "about",
     "services",
     "items",
+    "products",
+    "export",
     "contact",
   ];
 
@@ -42,6 +44,7 @@ export default function Navbar() {
     { name: "About", path: "/about" },
     { name: "Services", path: "/services" },
     { name: "Products", path: "/items" },
+    { name: "Export", path: "/export" },
     { name: "Contact", path: "/contact" },
   ];
 
