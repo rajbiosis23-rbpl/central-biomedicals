@@ -119,9 +119,9 @@ export default function HeroSection({ city }) {
               </>
             ) : (
               <>
-                <Link href={makeLink("/services")}>
+                <Link href={makeLink("/items")}>
                   <button className="primary-btn flex items-center gap-2">
-                    {heroData.button1Text || "Explore Services"}
+                    {heroData.button1Text || "Explore Products"}
                     <ArrowRight size={18} />
                   </button>
                 </Link>

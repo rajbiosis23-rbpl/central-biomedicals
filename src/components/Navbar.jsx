@@ -4,7 +4,7 @@ import Link from "next/link";
 import { Menu, X } from "lucide-react";
 import { useState } from "react";
 import { usePathname } from "next/navigation";
-
+import Image from "next/image";
 export default function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -51,13 +51,17 @@ export default function Navbar() {
 
         {/* Logo */}
         <Link href={makeLink("/")}>
-          <h1 className="text-xl md:text-2xl font-bold text-sky-700">
-            Central
-            <span className="text-slate-900">
-              {" "}Biomedicals
-            </span>
-          </h1>
+          <Image
+            src="/logo.png"
+            alt="Raj Biosis"
+            width={90}
+            height={35}
+            priority
+            className="h-auto w-[70px] md:w-[90px] object-contain"
+          />
         </Link>
+
+
 
         {/* Desktop Menu */}
         <nav className="hidden lg:flex items-center gap-8 text-[15px] font-medium text-slate-700">

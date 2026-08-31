@@ -8,7 +8,7 @@ import {
   Activity,
 } from "lucide-react";
 
-import PageBanner from "@/components/PageBanner";
+
 import SectionTitle from "@/components/SectionTitle";
 import ServiceCard from "@/components/ServiceCard";
 import CTASection from "@/components/CTASection";
@@ -26,7 +26,7 @@ export default function ServicesPage() {
     <Wrench key="wrench" size={30} />,
     <Activity key="activity" size={30} />,
   ];
-  
+
   useEffect(() => {
     const fetchServices = async () => {
       try {
@@ -46,11 +46,7 @@ export default function ServicesPage() {
 
   return (
     <>
-      {/* Banner */}
-      <PageBanner
-        title="Our Services"
-        subtitle="Delivering trusted biomedical and diagnostic services with innovation, precision, and healthcare excellence."
-      />
+
 
       {/* Services Grid */}
       <section className="section-padding bg-white">
