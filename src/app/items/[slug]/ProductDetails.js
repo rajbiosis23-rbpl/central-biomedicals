@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState, useRef } from "react";
 import Image from "next/image";
 import toast from "react-hot-toast";
@@ -12,6 +13,8 @@ import {
     FaFacebook,
     FaInstagram,
     FaLink,
+    FaDownload,
+    FaFilePdf,
 } from "react-icons/fa";
 
 import {
@@ -59,14 +62,15 @@ export default function ProductDetails({ slug }) {
     const [selectedImage, setSelectedImage] = useState("");
     const [selectedMedia, setSelectedMedia] = useState("image");
     const [showShare, setShowShare] = useState(false);
+    const [loading, setLoading] = useState(!initialProduct);
 
     const shareRef = useRef();
-    const brochureRef = useRef();
-
     const [form, setForm] = useState({
         name: "",
         email: "",
         phone: "",
+        company: "",
+        country: "",
     });
 
     const [submitting, setSubmitting] = useState(false);
@@ -82,33 +86,19 @@ export default function ProductDetails({ slug }) {
 
     const pathname = usePathname();
 
-    // ==========================================================
-    // CITY
-    // ==========================================================
-
-    const pathParts =
-        pathname?.split("/").filter(Boolean) || [];
-
-    const city =
-        pathParts.length > 1 &&
-            ![
-                "about",
-                "services",
-                "items",
-                "contact",
-            ].includes(pathParts[0])
-            ? pathParts[0]
-            : "India";
-
-    const cityName =
-        city.charAt(0).toUpperCase() +
-        city.slice(1);
-
-    // ==========================================================
-    // LOAD PRODUCT + CONTACT
-    // ==========================================================
+    const pathParts = pathname.split("/").filter(Boolean);
+    const city = pathParts.length > 1 ? pathParts[0] : "India";
+    const cityName = city.charAt(0).toUpperCase() + city.slice(1);
 
     useEffect(() => {
+        if (initialProduct) {
+            setProduct(initialProduct);
+            setSelectedImage(initialProduct.images?.length > 0 ? initialProduct.images[0] : (initialProduct.image || ""));
+            setSelectedMedia("image");
+            setLoading(false);
+            return;
+        }
+
         const loadProduct = async () => {
             try {
                 const allProducts =
@@ -410,11 +400,8 @@ export default function ProductDetails({ slug }) {
         async (e) => {
             e.preventDefault();
 
-            const phoneRegex =
-                /^[6-9]\d{9}$/;
-
-            const emailRegex =
-                /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            const phoneRegex = /^[6-9]\d{9}$/;
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
             if (!form.name.trim()) {
                 return toast.error(
@@ -432,14 +419,8 @@ export default function ProductDetails({ slug }) {
                 );
             }
 
-            if (
-                !phoneRegex.test(
-                    form.phone
-                )
-            ) {
-                return toast.error(
-                    "Enter valid mobile number"
-                );
+            if (!phoneRegex.test(form.phone)) {
+                return toast.error("Enter valid mobile number");
             }
 
             try {
@@ -467,9 +448,7 @@ export default function ProductDetails({ slug }) {
                     }
                 );
 
-                toast.success(
-                    "Your enquiry has been submitted successfully."
-                );
+                toast.success("Your enquiry has been submitted successfully.");
 
                 setForm({
                     name: "",
@@ -477,11 +456,8 @@ export default function ProductDetails({ slug }) {
                     phone: "",
                 });
             } catch (error) {
-                console.error(error);
-
-                toast.error(
-                    "Something went wrong"
-                );
+                console.error("Error submitting query:", error);
+                toast.error("Something went wrong");
             } finally {
                 setSubmitting(false);
             }
@@ -753,27 +729,8 @@ ${product?.desc}
             />
 
             <div className="container-custom">
-
-                {/* BREADCRUMB */}
-
-                <div className="mb-6 text-sm text-sky-700">
-
-                    <span className="hover:text-sky-800">
-                        Home
-                    </span>
-
-                    {" / "}
-
-                    <span className="hover:text-sky-800">
-                        Products
-                    </span>
-
-                    {" / "}
-
-                    <span className="text-sky-800 font-medium">
-                        {product.title}
-                    </span>
-
+                <div className="mb-6 text-sm text-slate-500">
+                    Home / Products / {product.title}
                 </div>
 
                 {/* TOP SECTION */}
@@ -807,22 +764,12 @@ ${product?.desc}
                                         <div className="absolute inset-0 bg-slate-100 animate-pulse" />
                                     )}
 
-                                    <Image
-                                        src={
-                                            selectedImage ||
-                                            product.image
-                                        }
-                                        alt={
-                                            product.title
-                                        }
-                                        fill
-                                        priority
-                                        onLoad={() =>
-                                            setImageLoaded(
-                                                true
-                                            )
-                                        }
-                                        className={`object-contain p-4 transition duration-500 ${imageLoaded
+                                    <img
+                                        src={selectedImage || product.image || "/placeholder.jpg"}
+                                        alt={product.title}
+                                        onLoad={() => setImageLoaded(true)}
+                                        decoding="async"
+                                        className={`w-full h-full object-contain p-4 transition duration-500 ${imageLoaded
                                             ? "opacity-100"
                                             : "opacity-0"
                                             }`}
@@ -835,46 +782,34 @@ ${product?.desc}
                         {/* THUMBNAILS */}
 
                         <div className="flex flex-wrap gap-3 mt-5">
-
-                            {(
-                                product.images?.length
-                                    ? product.images
-                                    : [product.image]
-                            ).map(
-                                (img, index) => (
-                                    <button
-                                        key={index}
-                                        onClick={() => {
-                                            setSelectedImage(
-                                                img
-                                            );
-                                            setSelectedMedia(
-                                                "image"
-                                            );
-                                            setImageLoaded(
-                                                false
-                                            );
+                            {(product.images?.length
+                                ? product.images
+                                : [product.image || "/placeholder.jpg"]
+                            ).map((img, index) => (
+                                <button
+                                    key={index}
+                                    onClick={() => {
+                                        setSelectedImage(img);
+                                        setSelectedMedia("image");
+                                    }}
+                                    className={`w-20 h-20 rounded-xl overflow-hidden border-2 relative ${selectedMedia === "image" &&
+                                        selectedImage === img
+                                        ? "border-sky-600"
+                                        : "border-gray-200"
+                                        }`}
+                                >
+                                    <img
+                                        src={img}
+                                        alt=""
+                                        decoding="async"
+                                        loading="lazy"
+                                        className="w-full h-full object-cover"
+                                        onError={(e) => {
+                                            e.currentTarget.src = "/placeholder.jpg";
                                         }}
-                                        className={`w-20 h-20 rounded-xl overflow-hidden border-2 transition-all duration-300 ${selectedMedia ===
-                                            "image" &&
-                                            selectedImage ===
-                                            img
-                                            ? "border-sky-700 shadow-[0_5px_15px_rgba(3,105,161,0.25)]"
-                                            : "border-slate-200 hover:border-sky-700"
-                                            }`}
-                                    >
-                                        <Image
-                                            src={img}
-                                            alt=""
-                                            width={80}
-                                            height={80}
-                                            className="w-full h-full object-cover"
-                                        />
-                                    </button>
-                                )
-                            )}
-
-                            {/* VIDEO */}
+                                    />
+                                </button>
+                            ))}
 
                             {product.video && (
                                 <button
@@ -1008,74 +943,15 @@ ${product?.desc}
 
                         </div>
 
-                        {/* PRODUCT INFO */}
-
-                        <div className="mt-6 md:mt-8 bg-white p-5 sm:p-6 md:p-8 rounded-[24px] md:rounded-[30px] border border-slate-200 shadow-[0_20px_60px_rgba(3,105,161,0.10)] space-y-4">
-
-                            <p className="text-slate-600">
-                                <b className="text-slate-900">
-                                    Brand:
-                                </b>{" "}
-                                {product.brand ||
-                                    "N/A"}
-                            </p>
-
-                            <p className="text-slate-600">
-                                <b className="text-slate-900">
-                                    Model:
-                                </b>{" "}
-                                {product.model ||
-                                    "N/A"}
-                            </p>
-
-                            <p className="text-slate-600">
-                                <b className="text-slate-900">
-                                    Instrument:
-                                </b>{" "}
-                                {product.instrument ||
-                                    "N/A"}
-                            </p>
-
-                            <p className="text-slate-600">
-                                <b className="text-slate-900">
-                                    Capacity:
-                                </b>{" "}
-                                {product.capacity ||
-                                    "N/A"}
-                            </p>
-
-                            <p className="text-slate-600">
-                                <b className="text-slate-900">
-                                    Throughput:
-                                </b>{" "}
-                                {product.throughput ||
-                                    "N/A"}
-                            </p>
-
-                            <p className="text-slate-600">
-                                <b className="text-slate-900">
-                                    Usage:
-                                </b>{" "}
-                                {product.usage ||
-                                    "N/A"}
-                            </p>
-
-                            <p className="text-slate-600">
-                                <b className="text-slate-900">
-                                    Automation:
-                                </b>{" "}
-                                {product.automation ||
-                                    "N/A"}
-                            </p>
-
-                            <p className="text-slate-600">
-                                <b className="text-slate-900">
-                                    Availability:
-                                </b>{" "}
-                                {product.availability ||
-                                    "N/A"}
-                            </p>
-
+                        <div className="mt-6 md:mt-8 bg-white p-5 sm:p-6 md:p-8 rounded-[24px] md:rounded-[30px] shadow-[0_20px_60px_rgba(0,0,0,0.08)] space-y-4 font-medium text-slate-700">
+                            <p><b>Brand:</b> {product.brand || "N/A"}</p>
+                            <p><b>Model:</b> {product.model || "N/A"}</p>
+                            <p><b>Instrument:</b> {product.instrument || "N/A"}</p>
+                            <p><b>Capacity:</b> {product.capacity || "N/A"}</p>
+                            <p><b>Throughput:</b> {product.throughput || "N/A"}</p>
+                            <p><b>Usage:</b> {product.usage || "N/A"}</p>
+                            <p><b>Automation:</b> {product.automation || "N/A"}</p>
+                            <p><b>Availability:</b> {product.availability || "N/A"}</p>
                         </div>
 
                     </div>
@@ -1096,27 +972,22 @@ ${product?.desc}
                                 Request A Quote
                             </h2>
 
-                            <p className="text-slate-600 mb-8">
+                            <p className="text-slate-500 mb-8">
                                 Product:
-
-                                <span className="font-semibold ml-2 text-sky-700">
+                                <span className="font-semibold ml-2 text-slate-800">
                                     {product.title}
                                 </span>
                             </p>
 
                             <form
-                                onSubmit={
-                                    handleSubmit
-                                }
+                                onSubmit={handleSubmit}
                                 className="space-y-5"
                             >
 
                                 <input
                                     type="text"
                                     placeholder="Your Name"
-                                    value={
-                                        form.name
-                                    }
+                                    value={form.name}
                                     onChange={(e) =>
                                         setForm({
                                             ...form,
@@ -1125,15 +996,13 @@ ${product?.desc}
                                                     .value,
                                         })
                                     }
-                                    className="w-full bg-slate-50 border border-slate-200 rounded-xl md:rounded-2xl px-4 md:px-5 py-3 md:py-4 text-slate-900 placeholder:text-slate-400 outline-none focus:border-sky-700 focus:ring-2 focus:ring-sky-700/20 transition"
+                                    className="w-full bg-slate-100 rounded-xl md:rounded-2xl px-4 md:px-5 py-3 md:py-4 outline-none focus:ring-2 focus:ring-sky-600"
                                 />
 
                                 <input
                                     type="email"
                                     placeholder="Email Address"
-                                    value={
-                                        form.email
-                                    }
+                                    value={form.email}
                                     onChange={(e) =>
                                         setForm({
                                             ...form,
@@ -1142,39 +1011,29 @@ ${product?.desc}
                                                     .value,
                                         })
                                     }
-                                    className="w-full bg-slate-50 border border-slate-200 rounded-xl md:rounded-2xl px-4 md:px-5 py-3 md:py-4 text-slate-900 placeholder:text-slate-400 outline-none focus:border-sky-700 focus:ring-2 focus:ring-sky-700/20 transition"
+                                    className="w-full bg-slate-100 rounded-xl md:rounded-2xl px-4 md:px-5 py-3 md:py-4 outline-none focus:ring-2 focus:ring-sky-600"
                                 />
 
                                 <input
                                     type="tel"
                                     placeholder="Phone Number"
                                     maxLength={10}
-                                    value={
-                                        form.phone
-                                    }
+                                    value={form.phone}
                                     onChange={(e) =>
                                         setForm({
                                             ...form,
-                                            phone:
-                                                e.target.value.replace(
-                                                    /\D/g,
-                                                    ""
-                                                ),
+                                            phone: e.target.value.replace(/\D/g, ""),
                                         })
                                     }
-                                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 text-slate-900 placeholder:text-slate-400 outline-none focus:border-sky-700 focus:ring-2 focus:ring-sky-700/20 transition"
+                                    className="w-full bg-slate-100 rounded-2xl px-5 py-4 outline-none focus:ring-2 focus:ring-sky-600"
                                 />
 
                                 <button
                                     type="submit"
-                                    disabled={
-                                        submitting
-                                    }
-                                    className="w-full bg-sky-700 !text-white py-4 rounded-2xl font-semibold shadow-lg shadow-sky-700/20 hover:-translate-y-0.5 hover:bg-sky-800 hover:shadow-xl hover:shadow-sky-700/25 transition-all duration-300 disabled:opacity-70"
+                                    disabled={submitting}
+                                    className="w-full bg-gradient-to-r from-sky-600 to-blue-700 text-white py-4 rounded-2xl font-semibold hover:opacity-90 transition"
                                 >
-                                    {submitting
-                                        ? "Submitting..."
-                                        : "Get Quote"}
+                                    {submitting ? "Submitting..." : "Get Quote"}
                                 </button>
 
                             </form>
@@ -1887,34 +1746,6 @@ ${product?.desc}
                 </div>
 
             </div>
-
-            {/* DOWNLOAD BROCHURE */}
-
-            <button
-                onClick={
-                    handleDownloadBrochure
-                }
-                disabled={
-                    downloading
-                }
-                title="Download Brochure"
-                className="fixed bottom-24 right-8 z-40 flex h-14 items-center justify-center gap-2 rounded-full bg-sky-700 px-6 !text-white shadow-lg shadow-sky-700/25 transition-all duration-300 hover:-translate-y-1 hover:bg-sky-800 hover:shadow-xl hover:shadow-sky-700/30 active:scale-95 disabled:opacity-75 font-semibold"
-            >
-
-                {downloading ? (
-                    <div className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                ) : (
-                    <Download
-                        size={20}
-                    />
-                )}
-
-                <span className="!text-white">
-                    Download Brochure
-                </span>
-
-            </button>
-
         </section>
     );
 }

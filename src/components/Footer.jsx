@@ -10,11 +10,6 @@ import {
   Phone,
   MapPin,
 } from "lucide-react";
-import {
-  FaFacebookF,
-  FaInstagram,
-} from "react-icons/fa";
-import { fetchFullCatalog } from "@/lib/data-fetcher";
 
 export default function Footer() {
   const [contactInfo, setContactInfo] = useState([]);
@@ -32,6 +27,7 @@ export default function Footer() {
     "about",
     "services",
     "products",
+    "export",
     "contact",
     "items",
   ];
@@ -142,22 +138,13 @@ export default function Footer() {
   ========================================================= */
 
   const phone =
-    contactInfo.find(
-      (x) => x.label === "Phone Number"
-    )?.value ||
-    "+91 9983123469\n+91 9983333489";
+    contactInfo.find((x) => x.label === "Phone Number")?.value || "";
 
   const email =
-    contactInfo.find(
-      (x) => x.label === "Email Address"
-    )?.value ||
-    "rajbiosis@yahoo.in";
+    contactInfo.find((x) => x.label === "Email Address")?.value || "";
 
   const address =
-    contactInfo.find(
-      (x) => x.label === "Office Address"
-    )?.value ||
-    "F-4, 1st Floor, Plot No. 16, D-Block Tagor Nagar, on Ajmer-Delhi, 200 Feet Bypass Rd, Jaipur, Rajasthan 302021";
+    contactInfo.find((x) => x.label === "Office Address")?.value || "";
 
   const dynamicAddress = districtData
     ? `${districtData.district}, ${districtData.state}, India`
@@ -256,129 +243,27 @@ export default function Footer() {
               precision healthcare support.
 
             </p>
+          </div>
 
-
-            {/* SOCIAL */}
-
-            <div className="mt-6 flex gap-3">
-
-              <a
-                href="https://www.facebook.com/rajbiosispvtltd/"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-sky-700 transition-all duration-300 hover:border-sky-700 hover:bg-sky-700 hover:text-white"
-              >
-
-                <FaFacebookF size={17} />
-
-              </a>
-
-
-              <a
-                href="https://www.instagram.com/rajbiosisindia/"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-sky-700 transition-all duration-300 hover:border-sky-700 hover:bg-sky-700 hover:text-white"
-              >
-
-                <FaInstagram size={18} />
-
-              </a>
-
+          <div>
+            <h3 className="text-lg font-semibold mb-5">Quick Links</h3>
+            <div className="flex flex-col gap-3 text-slate-600">
+              <LinkComponent href={makeLink("/")}>Home</LinkComponent>
+              <LinkComponent href={makeLink("/about")}>About</LinkComponent>
+              <LinkComponent href={makeLink("/services")}>Services</LinkComponent>
+              <LinkComponent href={makeLink("/items")}>Products</LinkComponent>
+              <LinkComponent href={makeLink("/contact")}>Contact</LinkComponent>
             </div>
 
           </div>
 
-
-          {/* =================================================
-              QUICK LINKS
-          ================================================= */}
-
-          <div className="w-fit">
-
-            <h3 className="mb-5 text-lg font-semibold text-slate-900">
-              Quick Links
-            </h3>
-
-            <div className="flex w-fit flex-col gap-3 text-slate-500">
-
-              <Link
-                href={makeLink("/")}
-                className="transition hover:text-sky-700"
-              >
-                Home
-              </Link>
-
-              <Link
-                href={makeLink("/about")}
-                className="transition hover:text-sky-700"
-              >
-                About
-              </Link>
-
-              <Link
-                href={makeLink("/services")}
-                className="transition hover:text-sky-700"
-              >
-                Services
-              </Link>
-
-              <Link
-                href={makeLink("/items")}
-                className="transition hover:text-sky-700"
-              >
-                Products
-              </Link>
-
-              <Link
-                href={makeLink("/contact")}
-                className="transition hover:text-sky-700"
-              >
-                Contact
-              </Link>
-
-            </div>
-
-          </div>
-
-
-          {/* =================================================
-              CATEGORIES
-          ================================================= */}
-
-          <div className="w-fit">
-
-            <h3 className="mb-5 text-lg font-semibold text-slate-900">
-              Our Categories
-            </h3>
-
-            <div className="flex w-fit flex-col gap-3 text-slate-500">
-
-              {categories.map((cat) => (
-
-                <Link
-                  key={cat}
-                  href={makeLink(
-                    `/items#${cat
-                      .replace(/\s+/g, "-")
-                      .toLowerCase()}`
-                  )}
-                  className="w-fit text-left transition hover:text-sky-700"
-                >
-                  {cat}
-                </Link>
-
-              ))}
-
-              {categories.length === 0 && (
-                <>
-                  <p>Diagnostic Equipment</p>
-                  <p>Laboratory Solutions</p>
-                  <p>Biomedical Instruments</p>
-                  <p>Maintenance Support</p>
-                </>
-              )}
-
+          <div>
+            <h3 className="text-lg font-semibold mb-5">Services</h3>
+            <div className="flex flex-col gap-3 text-slate-600">
+              <p>Diagnostic Equipment</p>
+              <p>Laboratory Solutions</p>
+              <p>Biomedical Instruments</p>
+              <p>Maintenance Support</p>
             </div>
 
           </div>
@@ -399,75 +284,21 @@ export default function Footer() {
               {/* ADDRESS */}
 
               <div className="flex items-start gap-3">
-
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-slate-50">
-
-                  <MapPin
-                    size={21}
-                    className="text-sky-700"
-                  />
-
-                </div>
-
-                <p className="pt-1 leading-6">
-                  {dynamicAddress}
-                </p>
-
+                <MapPin size={18} className="mt-1 text-sky-700" />
+                <p>{dynamicAddress}</p>
               </div>
 
-
-              {/* PHONE */}
-
-              <div className="flex flex-col gap-2">
-
-                {phoneNumbers.map(
-                  (num, i) => (
-
-                    <div
-                      key={i}
-                      className="flex items-center gap-3"
-                    >
-
-                      <Phone
-                        size={17}
-                        className="shrink-0 text-sky-700"
-                      />
-
-                      <a
-                        href={`tel:${num}`}
-                        className="transition hover:text-sky-700"
-                      >
-                        {num}
-                      </a>
-
-                    </div>
-
-                  )
-                )}
-
+              <div className="flex items-center gap-3">
+                <Phone size={18} className="text-sky-700" />
+                <p>{phone}</p>
               </div>
 
 
               {/* EMAIL */}
 
               <div className="flex items-center gap-3">
-
-                <Mail
-                  size={17}
-                  className="text-sky-700"
-                />
-
-                <p>
-
-                  <a
-                    href={`mailto:${email}`}
-                    className="transition hover:text-sky-700"
-                  >
-                    {email}
-                  </a>
-
-                </p>
-
+                <Mail size={18} className="text-sky-700" />
+                <p>{email}</p>
               </div>
 
             </div>

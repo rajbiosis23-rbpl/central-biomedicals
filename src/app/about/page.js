@@ -1,12 +1,35 @@
 import Image from "next/image";
-
 import PageBanner from "@/components/PageBanner";
 import SectionTitle from "@/components/SectionTitle";
 import DDS from "@/components/img/Dds.png";
+import { getBreadcrumbSchema } from "@/lib/seo";
+
+export const metadata = {
+  title: "About Us | Medical & Diagnostic Equipment Manufacturer India | Central Biomedicals",
+  description:
+    "Learn about Central Biomedicals, a trusted Indian manufacturer, supplier, and exporter of medical diagnostic equipment, hematology analyzers, and lab instruments.",
+  alternates: {
+    canonical: "https://centralbiomedicals.com/about",
+  },
+  openGraph: {
+    title: "About Central Biomedicals | Medical & Diagnostic Equipment Exporter",
+    description: "Trusted partner in biomedical technologies, laboratory instruments, and healthcare solutions.",
+    url: "https://centralbiomedicals.com/about",
+  },
+};
 
 export default function AboutPage() {
+  const breadcrumbSchema = getBreadcrumbSchema([
+    { name: "Home", url: "/" },
+    { name: "About", url: "/about" },
+  ]);
+
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }}
+      />
       {/* Banner */}
       <PageBanner
         title="About Central Biomedicals"

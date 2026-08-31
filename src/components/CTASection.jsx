@@ -118,7 +118,7 @@ export default function CTASection({ city }) {
                   </Link>
 
                   <a
-                    href="tel:+919876543210"
+                    href="tel:+919983123469"
                     className="border border-slate-300 px-6 py-4 rounded-2xl font-semibold hover:bg-slate-100 transition text-center"
                   >
                     Call Now
