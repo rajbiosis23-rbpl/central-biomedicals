@@ -2,10 +2,11 @@ import { fetchFullCatalog } from "@/lib/data-fetcher-server";
 import ProductsClient from "./ProductsClient";
 import { getBreadcrumbSchema, getCollectionPageSchema } from "@/lib/seo";
 
-export const revalidate = 3600; // Revalidate cache every hour
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 export default async function ProductsPage({ district = null, city = null }) {
-  // Fetch full catalog from server cache
+  // Fetch full catalog from Master Catalog
   const allProducts = await fetchFullCatalog();
 
   const breadcrumbSchema = getBreadcrumbSchema([

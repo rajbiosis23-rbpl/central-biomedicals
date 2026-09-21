@@ -45,7 +45,7 @@ export default async function sitemap() {
     ];
 
     try {
-        // Fetch products using the server cache catalog helper
+        // Fetch products using Master Catalog helper
         const products = await fetchFullCatalog();
         const seenProductSlugs = new Set();
 
@@ -62,22 +62,38 @@ export default async function sitemap() {
         });
 
         // Fetch district pages for local landing pages
-        const districtSnap = await getDocs(
-            collection(db, "websites", "centralbiomedicals", "districts")
-        );
+        let districtSnap = null;
+        try {
+            districtSnap = await getDocs(
+                collection(db, "websites", "centralbiomedicalcom", "districts")
+            );
+            if (districtSnap.empty) {
+                districtSnap = await getDocs(
+                    collection(db, "websites", "centralbiomedicals", "districts")
+                );
+            }
+        } catch (e) {
+            try {
+                districtSnap = await getDocs(
+                    collection(db, "websites", "centralbiomedicals", "districts")
+                );
+            } catch (err2) {}
+        }
 
-        districtSnap.docs.forEach((doc) => {
-            const data = doc.data();
-            const slug = data.slug || doc.id;
-            if (!slug) return;
+        if (districtSnap && !districtSnap.empty) {
+            districtSnap.docs.forEach((doc) => {
+                const data = doc.data();
+                const slug = data.slug || doc.id;
+                if (!slug) return;
 
-            urls.push({
-                url: `${baseUrl}/${slug}`,
-                lastModified: new Date(),
-                changeFrequency: "monthly",
-                priority: 0.7,
+                urls.push({
+                    url: `${baseUrl}/${slug}`,
+                    lastModified: new Date(),
+                    changeFrequency: "monthly",
+                    priority: 0.7,
+                });
             });
-        });
+        }
     } catch (error) {
         console.error("Sitemap Generation Error:", error);
     }

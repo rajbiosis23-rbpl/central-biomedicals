@@ -2,7 +2,8 @@ import { fetchFullCatalog } from "@/lib/data-fetcher-server";
 import ProductsClient from "../items/ProductsClient";
 import { getBreadcrumbSchema, getCollectionPageSchema } from "@/lib/seo";
 
-export const revalidate = 3600;
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 export const metadata = {
   title: "Biomedical & Diagnostic Products | Central Biomedicals",

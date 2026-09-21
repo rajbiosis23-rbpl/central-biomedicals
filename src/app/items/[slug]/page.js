@@ -1,11 +1,22 @@
 import ProductDetails from "./ProductDetails";
 import { fetchFullCatalog } from "@/lib/data-fetcher-server";
 import { getProductSchema, getBreadcrumbSchema } from "@/lib/seo";
+import { notFound } from "next/navigation";
+
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 export async function generateMetadata({ params }) {
     const { slug } = await params;
     const allProducts = await fetchFullCatalog();
     const product = allProducts.find((p) => p.slug === slug) || null;
+
+    if (!product) {
+        return {
+            title: "Product Not Found | Central Biomedicals",
+            description: "The requested medical diagnostic product is not available or has been unassigned.",
+        };
+    }
 
     const formattedSlug = slug
         ?.replace(/-/g, " ")
@@ -87,6 +98,10 @@ export default async function Page({ params }) {
     const allProducts = await fetchFullCatalog();
     const product = allProducts.find((p) => p.slug === slug) || null;
 
+    if (!product) {
+        notFound();
+    }
+
     const productSchema = getProductSchema(product);
 
     const breadcrumbSchema = getBreadcrumbSchema([
@@ -96,38 +111,36 @@ export default async function Page({ params }) {
         { name: product?.title || slug, url: `/items/${slug}` },
     ]);
 
-    const faqSchema = product
-        ? {
-            "@context": "https://schema.org",
-            "@type": "FAQPage",
-            mainEntity: [
-                {
-                    "@type": "Question",
-                    name: `What is the application of ${product.title}?`,
-                    acceptedAnswer: {
-                        "@type": "Answer",
-                        text: `${product.title} is utilized in hospitals, diagnostic centers, pathology laboratories, and clinical facilities for accurate biomedical analysis.`,
-                    },
+    const faqSchema = {
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        mainEntity: [
+            {
+                "@type": "Question",
+                name: `What is the application of ${product.title}?`,
+                acceptedAnswer: {
+                    "@type": "Answer",
+                    text: `${product.title} is utilized in hospitals, diagnostic centers, pathology laboratories, and clinical facilities for accurate biomedical analysis.`,
                 },
-                {
-                    "@type": "Question",
-                    name: `Does Central Biomedicals export ${product.title} internationally?`,
-                    acceptedAnswer: {
-                        "@type": "Answer",
-                        text: `Yes, Central Biomedicals exports ${product.title} globally with complete export documentation, safe packaging, and international freight assistance.`,
-                    },
+            },
+            {
+                "@type": "Question",
+                name: `Does Central Biomedicals export ${product.title} internationally?`,
+                acceptedAnswer: {
+                    "@type": "Answer",
+                    text: `Yes, Central Biomedicals exports ${product.title} globally with complete export documentation, safe packaging, and international freight assistance.`,
                 },
-                {
-                    "@type": "Question",
-                    name: "Do you provide technical and installation support?",
-                    acceptedAnswer: {
-                        "@type": "Answer",
-                        text: "Yes, installation assistance, operational training, and technical support are provided for all diagnostic instruments.",
-                    },
+            },
+            {
+                "@type": "Question",
+                name: "Do you provide technical and installation support?",
+                acceptedAnswer: {
+                    "@type": "Answer",
+                    text: "Yes, installation assistance, operational training, and technical support are provided for all diagnostic instruments.",
                 },
-            ],
-        }
-        : null;
+            },
+        ],
+    };
 
     return (
         <>

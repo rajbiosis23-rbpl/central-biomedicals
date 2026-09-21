@@ -11,6 +11,8 @@ import {
   Search,
   ChevronRight,
   ChevronUp,
+  Inbox,
+  RefreshCw,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import SectionTitle from "@/components/SectionTitle";
@@ -67,7 +69,7 @@ const SubCategoryItem = memo(function SubCategoryItem({
           <div className="max-h-40 overflow-y-auto custom-scrollbar space-y-1.5 pr-1">
             {subList.map((item) => (
               <ProductLink
-                key={item.uid}
+                key={item.uid || item.id}
                 item={item}
                 category={category}
                 scrollToProduct={scrollToProduct}
@@ -146,6 +148,10 @@ const CategoryItem = memo(function CategoryItem({
 });
 
 export default function ProductsClient({ initialProducts = [], district = null, city = null }) {
+  // Live dynamic products state
+  const [products, setProducts] = useState(initialProducts);
+  const [isSyncing, setIsSyncing] = useState(false);
+
   const [categorySearch, setCategorySearch] = useState("");
   const [searchInput, setSearchInput] = useState("");
   const [productSearch, setProductSearch] = useState("");
@@ -155,7 +161,65 @@ export default function ProductsClient({ initialProducts = [], district = null, 
   const [pendingScroll, setPendingScroll] = useState(null);
   const [showTopButton, setShowTopButton] = useState(false);
 
-  // Debounce search term updates to make search typing instant
+  // Sync state if initialProducts prop updates
+  useEffect(() => {
+    setProducts(initialProducts);
+  }, [initialProducts]);
+
+  // Real-time zero-delay live sync (Window Focus, Tab Visibility, and 3-second live sync)
+  useEffect(() => {
+    let isMounted = true;
+    let isFetching = false;
+
+    const syncCatalog = async () => {
+      if (isFetching) return;
+      isFetching = true;
+      try {
+        const res = await fetch(`/api/catalog?t=${Date.now()}`, {
+          cache: "no-store",
+          headers: {
+            "Pragma": "no-cache",
+            "Cache-Control": "no-cache",
+          },
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          const freshList = Array.isArray(data) ? data : (data.products || []);
+          if (isMounted) {
+            setProducts(freshList);
+          }
+        }
+      } catch (err) {
+        // silent fail on network interruption
+      } finally {
+        isFetching = false;
+      }
+    };
+
+    // Immediate sync on tab / window focus
+    const handleFocus = () => syncCatalog();
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") {
+        syncCatalog();
+      }
+    };
+
+    window.addEventListener("focus", handleFocus);
+    document.addEventListener("visibilitychange", handleVisibility);
+
+    // 3-second live polling interval
+    const intervalId = setInterval(syncCatalog, 3000);
+
+    return () => {
+      isMounted = false;
+      clearInterval(intervalId);
+      window.removeEventListener("focus", handleFocus);
+      document.removeEventListener("visibilitychange", handleVisibility);
+    };
+  }, []);
+
+  // Debounce search term updates
   useEffect(() => {
     const timer = setTimeout(() => {
       setProductSearch(searchInput);
@@ -163,13 +227,13 @@ export default function ProductsClient({ initialProducts = [], district = null, 
     return () => clearTimeout(timer);
   }, [searchInput]);
 
-  // Combined single-pass product filtering, grouping, category count, and sorting for maximum performance
+  // Combined single-pass product filtering, grouping, category count, and sorting
   const { filteredProducts, sortedGroupedProducts, categoryCounts } = useMemo(() => {
     const start = performance.now();
     const query = productSearch.trim().toLowerCase();
     const filtered = query
-      ? initialProducts.filter((item) => {
-        const title = (item.title || "").toLowerCase();
+      ? products.filter((item) => {
+        const title = (item.title || item.name || "").toLowerCase();
         const brand = (item.brand || "").toLowerCase();
         const model = (item.model || "").toLowerCase();
         const category = (item.category || "").toLowerCase();
@@ -183,14 +247,14 @@ export default function ProductsClient({ initialProducts = [], district = null, 
           subCategory.includes(query)
         );
       })
-      : initialProducts;
+      : products;
 
     const grouped = {};
     const counts = {};
 
     filtered.forEach((item) => {
-      const cat = item.category || "Other Products";
-      const sub = item.subCategory || cat;
+      const cat = (item.category || "Other Products").trim();
+      const sub = (item.subCategory || cat).trim();
 
       if (!grouped[cat]) {
         grouped[cat] = {};
@@ -223,14 +287,14 @@ export default function ProductsClient({ initialProducts = [], district = null, 
     }
 
     const end = performance.now();
-    console.log(`[ProductsClient] Grouping, filtering, and sorting completed in ${(end - start).toFixed(2)}ms`);
+    console.log(`[ProductsClient] Grouping ${products.length} products completed in ${(end - start).toFixed(2)}ms`);
 
     return {
       filteredProducts: filtered,
       sortedGroupedProducts: sortedObj,
       categoryCounts: counts,
     };
-  }, [initialProducts, productSearch]);
+  }, [products, productSearch]);
 
   const getCategoryProductCount = useCallback((categoryName) => {
     return categoryCounts[categoryName] || 0;
@@ -253,8 +317,7 @@ export default function ProductsClient({ initialProducts = [], district = null, 
     setActiveCategory(category);
     setPendingScroll(slug);
 
-    // Auto-expand the target subcategory when scrolling to its product
-    const prod = initialProducts.find((p) => p.slug === slug);
+    const prod = products.find((p) => p.slug === slug);
     if (prod && prod.subCategory) {
       const subKey = `${category}-${prod.subCategory}`;
       setOpenedSubCategories((prev) => ({
@@ -262,7 +325,7 @@ export default function ProductsClient({ initialProducts = [], district = null, 
         [subKey]: true,
       }));
     }
-  }, [initialProducts]);
+  }, [products]);
 
   // Scroll to selected sidebar item when category expansion finishes
   useEffect(() => {
@@ -299,43 +362,12 @@ export default function ProductsClient({ initialProducts = [], district = null, 
     });
   };
 
-  // Measure hydration completion time
-  useEffect(() => {
-    if (typeof window !== "undefined" && window.performance) {
-      const navigationStart = window.performance.timing?.navigationStart || 0;
-      if (navigationStart) {
-        const timeSinceNavigation = Date.now() - navigationStart;
-        console.log(`[ProductsClient] Hydration completed in ${timeSinceNavigation}ms since navigation start`);
-      }
-    }
-  }, []);
-
   const onRenderCallback = (id, phase, actualDuration) => {
     console.log(`[React Profiler] ${id} render time (${phase}): ${actualDuration.toFixed(2)}ms`);
   };
 
   return (
     <Profiler id="ProductsLayout" onRender={onRenderCallback}>
-
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{
-          __html: JSON.stringify({
-            "@context": "https://schema.org",
-            "@type": "MedicalEquipmentSupplier",
-            name: "Human Biomedicals",
-            url: "https://humanbiomedicals.org",
-            areaServed: city,
-            description: `Medical laboratory and hospital equipment in ${city}`,
-            address: {
-              "@type": "PostalAddress",
-              addressLocality: city,
-              addressCountry: "India",
-            },
-          }),
-        }}
-      />
-
       <Toaster
         position="top-right"
         toastOptions={{
@@ -348,7 +380,7 @@ export default function ProductsClient({ initialProducts = [], district = null, 
         }}
       />
 
-      {/* Products */}
+      {/* Products Section */}
       <section className="section-padding bg-white">
         <div className="container-custom">
           <SectionTitle
@@ -371,13 +403,13 @@ export default function ProductsClient({ initialProducts = [], district = null, 
             placeholder="Search products..."
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
-            className="w-full h-16 pl-14 pr-5 rounded-2xl border border-slate-200 bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
+            className="w-full h-16 pl-14 pr-5 rounded-2xl border border-slate-200 bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-sky-500 text-slate-800"
           />
         </div>
 
         {/* Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-[320px_minmax(0,1fr)] gap-6 lg:gap-10 mt-8 lg:mt-16 items-start px-4 lg:px-0">
-          {/* Main Sidebar (Only scrollable container for the sidebar) */}
+          {/* Main Sidebar */}
           <aside className="lg:sticky lg:top-24 self-start rounded-[32px] border border-slate-200 bg-white shadow-xl px-6 pb-6 pt-0 max-h-[calc(100vh-120px)] overflow-y-auto custom-scrollbar relative">
             {/* Sticky Header Section */}
             <div className="sticky top-0 -mx-6 pt-6 px-6 pb-3 bg-white z-20 border-b border-slate-100 mb-4 h-[116px]">
@@ -405,37 +437,68 @@ export default function ProductsClient({ initialProducts = [], district = null, 
             </div>
 
             <div className="space-y-1.5">
-              {Object.keys(sortedGroupedProducts)
-                .filter((category) =>
-                  category.toLowerCase().includes(categorySearch.toLowerCase())
-                )
-                .map((category) => {
-                  const isOpened = openedCategory === category;
-                  const isActive = activeCategory === category;
-                  const subcategories = sortedGroupedProducts[category] || {};
-                  const count = getCategoryProductCount(category);
+              {Object.keys(sortedGroupedProducts).length === 0 ? (
+                <div className="py-8 text-center text-slate-400 text-sm">
+                  No active categories
+                </div>
+              ) : (
+                Object.keys(sortedGroupedProducts)
+                  .filter((category) =>
+                    category.toLowerCase().includes(categorySearch.toLowerCase())
+                  )
+                  .map((category) => {
+                    const isOpened = openedCategory === category;
+                    const isActive = activeCategory === category;
+                    const subcategories = sortedGroupedProducts[category] || {};
+                    const count = getCategoryProductCount(category);
 
-                  return (
-                    <CategoryItem
-                      key={category}
-                      category={category}
-                      isOpened={isOpened}
-                      isActive={isActive}
-                      subcategories={subcategories}
-                      categoryProductCount={count}
-                      toggleCategory={toggleCategory}
-                      toggleSubCategory={toggleSubCategory}
-                      openedSubCategories={openedSubCategories}
-                      scrollToProduct={scrollToProduct}
-                    />
-                  );
-                })}
+                    return (
+                      <CategoryItem
+                        key={category}
+                        category={category}
+                        isOpened={isOpened}
+                        isActive={isActive}
+                        subcategories={subcategories}
+                        categoryProductCount={count}
+                        toggleCategory={toggleCategory}
+                        toggleSubCategory={toggleSubCategory}
+                        openedSubCategories={openedSubCategories}
+                        scrollToProduct={scrollToProduct}
+                      />
+                    );
+                  })
+              )}
             </div>
           </aside>
 
           {/* RIGHT SIDE START */}
           <div className="space-y-16">
-            {filteredProducts.length === 0 ? (
+            {products.length === 0 ? (
+              /* Blank/Empty State when 0 products are assigned */
+              <div className="bg-white border border-slate-200 rounded-[32px] p-10 lg:p-16 text-center shadow-lg">
+                <div className="w-24 h-24 mx-auto rounded-full bg-slate-100 flex items-center justify-center text-slate-400 mb-6">
+                  <Inbox size={48} />
+                </div>
+
+                <h2 className="text-2xl lg:text-3xl font-bold text-slate-900">
+                  No Products Available
+                </h2>
+
+                <p className="mt-4 text-slate-500 max-w-xl mx-auto leading-7 text-base">
+                  There are currently no products enabled for this website in the Master Catalog. Please check back soon or contact us directly.
+                </p>
+
+                <div className="mt-8 flex justify-center gap-4">
+                  <Link
+                    href="/contact"
+                    className="px-6 py-3 rounded-xl bg-sky-700 text-white font-semibold hover:bg-sky-800 transition"
+                  >
+                    Contact Support
+                  </Link>
+                </div>
+              </div>
+            ) : filteredProducts.length === 0 ? (
+              /* Search Not Found State */
               <div className="bg-white border border-slate-200 rounded-[32px] p-10 lg:p-16 text-center shadow-lg">
                 <div className="w-24 h-24 mx-auto rounded-full bg-sky-100 flex items-center justify-center text-5xl mb-6">
                   🔍
@@ -458,7 +521,7 @@ export default function ProductsClient({ initialProducts = [], district = null, 
                     setSearchInput("");
                     setProductSearch("");
                   }}
-                  className="mt-8 px-8 py-3 rounded-xl bg-sky-700 text-white font-semibold hover:bg-sky-800 transition"
+                  className="mt-8 px-8 py-3 rounded-xl bg-sky-700 text-white font-semibold hover:bg-sky-800 transition cursor-pointer"
                 >
                   View All Products
                 </button>
@@ -502,9 +565,9 @@ export default function ProductsClient({ initialProducts = [], district = null, 
 
                             {/* Product List */}
                             <div className="space-y-8">
-                              {list.slice(0, 12).map((product) => (
+                              {list.map((product) => (
                                 <ProductCard
-                                  key={product.uid}
+                                  key={product.uid || product.id}
                                   product={product}
                                   district={district}
                                 />
@@ -573,7 +636,7 @@ export default function ProductsClient({ initialProducts = [], district = null, 
       {showTopButton && (
         <button
           onClick={scrollToTop}
-          className="fixed bottom-8 right-8 z-50 w-14 h-14 rounded-full bg-sky-700 text-white shadow-2xl hover:scale-110 transition flex items-center justify-center"
+          className="fixed bottom-8 right-8 z-50 w-14 h-14 rounded-full bg-sky-700 text-white shadow-2xl hover:scale-110 transition flex items-center justify-center cursor-pointer"
         >
           <ChevronUp size={24} />
         </button>

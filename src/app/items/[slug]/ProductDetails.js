@@ -56,10 +56,14 @@ const makeSlug = (text = "") =>
 // COMPONENT
 // ============================================================
 
-export default function ProductDetails({ slug }) {
-    const [product, setProduct] = useState(null);
+export default function ProductDetails({ slug, district, product: initialProduct }) {
+    const [product, setProduct] = useState(initialProduct || null);
     const [imageLoaded, setImageLoaded] = useState(false);
-    const [selectedImage, setSelectedImage] = useState("");
+    const [selectedImage, setSelectedImage] = useState(
+        initialProduct?.images?.length > 0
+            ? initialProduct.images[0]
+            : initialProduct?.image || ""
+    );
     const [selectedMedia, setSelectedMedia] = useState("image");
     const [showShare, setShowShare] = useState(false);
     const [loading, setLoading] = useState(!initialProduct);
@@ -639,60 +643,41 @@ ${product?.desc}
     // ==========================================================
 
     if (!product) {
-        return (
-            <section className="py-10 md:py-20 bg-slate-50">
-                <div className="container-custom">
-                    <div className="grid gap-12 lg:grid-cols-2">
-
-                        <div className="h-[420px] md:h-[520px] rounded-[36px] bg-slate-100 animate-pulse" />
-
-                        <div>
-                            <div className="h-12 w-3/4 bg-slate-100 rounded-xl animate-pulse mb-8" />
-
-                            {[...Array(8)].map(
-                                (_, i) => (
-                                    <div
-                                        key={i}
-                                        className="h-6 bg-slate-100 rounded-lg animate-pulse mb-4"
-                                    />
-                                )
-                            )}
+        if (loading) {
+            return (
+                <section className="py-10 md:py-20 bg-slate-50">
+                    <div className="container-custom">
+                        <div className="grid gap-12 lg:grid-cols-2">
+                            <div className="h-[420px] md:h-[520px] rounded-[36px] bg-slate-100 animate-pulse" />
+                            <div>
+                                <div className="h-12 w-3/4 bg-slate-100 rounded-xl animate-pulse mb-8" />
+                                {[...Array(8)].map((_, i) => (
+                                    <div key={i} className="h-6 bg-slate-100 rounded-lg animate-pulse mb-4" />
+                                ))}
+                            </div>
                         </div>
-
                     </div>
+                </section>
+            );
+        }
 
-                    <div className="mt-16 grid gap-8 lg:grid-cols-[600px_1fr]">
-
-                        <div className="bg-white rounded-[24px] md:rounded-[32px] p-5 sm:p-6 md:p-8 shadow-sm border border-slate-200">
-
-                            <div className="h-10 w-48 bg-slate-100 rounded-lg animate-pulse mb-6" />
-
-                            {[...Array(4)].map(
-                                (_, i) => (
-                                    <div
-                                        key={i}
-                                        className="h-14 bg-slate-100 rounded-2xl animate-pulse mb-4"
-                                    />
-                                )
-                            )}
-
-                        </div>
-
-                        <div className="bg-white rounded-[24px] md:rounded-[32px] p-5 sm:p-6 md:p-8 shadow-sm border border-slate-200">
-
-                            <div className="h-10 w-60 bg-slate-100 rounded-lg animate-pulse mb-6" />
-
-                            {[...Array(6)].map(
-                                (_, i) => (
-                                    <div
-                                        key={i}
-                                        className="h-5 bg-slate-100 rounded animate-pulse mb-4"
-                                    />
-                                )
-                            )}
-
-                        </div>
-
+        return (
+            <section className="py-16 md:py-24 bg-slate-50 min-h-[60vh] flex items-center justify-center">
+                <div className="container-custom max-w-lg text-center bg-white p-8 sm:p-12 rounded-[32px] border border-slate-200 shadow-sm">
+                    <div className="w-20 h-20 mx-auto rounded-full bg-slate-100 flex items-center justify-center text-3xl mb-5">
+                        📦
+                    </div>
+                    <h2 className="text-2xl font-bold text-slate-900">Product Unavailable</h2>
+                    <p className="mt-3 text-slate-500 leading-6 text-sm">
+                        This product is currently not assigned or enabled for this website in the Master Catalog.
+                    </p>
+                    <div className="mt-8 flex justify-center gap-4">
+                        <Link href="/items" className="px-6 py-3 rounded-xl bg-sky-700 text-white text-sm font-semibold hover:bg-sky-800 transition">
+                            Browse Products
+                        </Link>
+                        <Link href="/contact" className="px-6 py-3 rounded-xl bg-slate-100 text-slate-700 text-sm font-semibold hover:bg-slate-200 transition">
+                            Contact Us
+                        </Link>
                     </div>
                 </div>
             </section>

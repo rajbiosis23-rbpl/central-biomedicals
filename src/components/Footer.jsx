@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { fetchFullCatalog } from "@/lib/data-fetcher";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -248,11 +249,11 @@ export default function Footer() {
           <div>
             <h3 className="text-lg font-semibold mb-5">Quick Links</h3>
             <div className="flex flex-col gap-3 text-slate-600">
-              <LinkComponent href={makeLink("/")}>Home</LinkComponent>
-              <LinkComponent href={makeLink("/about")}>About</LinkComponent>
-              <LinkComponent href={makeLink("/services")}>Services</LinkComponent>
-              <LinkComponent href={makeLink("/items")}>Products</LinkComponent>
-              <LinkComponent href={makeLink("/contact")}>Contact</LinkComponent>
+              <Link href={makeLink("/")} className="hover:text-sky-700 transition">Home</Link>
+              <Link href={makeLink("/about")} className="hover:text-sky-700 transition">About</Link>
+              <Link href={makeLink("/services")} className="hover:text-sky-700 transition">Services</Link>
+              <Link href={makeLink("/items")} className="hover:text-sky-700 transition">Products</Link>
+              <Link href={makeLink("/contact")} className="hover:text-sky-700 transition">Contact</Link>
             </div>
 
           </div>

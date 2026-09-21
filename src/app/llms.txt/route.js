@@ -1,290 +1,174 @@
 import { NextResponse } from "next/server";
-import { adminDb } from "@/lib/firebase-admin";
+import { fetchFullCatalog } from "@/lib/data-fetcher";
+import { db } from "@/lib/firebase";
+import { collection, getDocs } from "firebase/firestore";
 
 export const dynamic = "force-dynamic";
 
-const WEBSITE = "centralbiomedicals";
 const DOMAIN = "https://centralbiomedicals.com";
 
 export async function GET() {
     try {
-        if (!adminDb) {
-            return new Response("Firebase Admin DB not initialized", { status: 503 });
-        }
+        // Master Catalog Products (already filtered by published & website visibility)
+        const publishedProducts = await fetchFullCatalog();
+
+        // Extract active categories from published products
+        const categoryMap = new Map();
+        publishedProducts.forEach((prod) => {
+            const cat = prod.category || "General";
+            if (!categoryMap.has(cat)) {
+                categoryMap.set(cat, []);
+            }
+            categoryMap.get(cat).push(prod);
+        });
+
+        const categories = Array.from(categoryMap.entries()).map(([name, prods]) => ({
+            id: name.toLowerCase().replace(/\s+/g, "-"),
+            category: name,
+            products: prods,
+        }));
 
         // Districts
-        const districtSnap = await adminDb
-            .collection("websites")
-            .doc(WEBSITE)
-            .collection("districts")
-            .get();
-
-        const districts = districtSnap.docs.map((doc) => ({
-            id: doc.id,
-            ...doc.data(),
-        }));
-
-        // Products Document
-        const productDoc = await adminDb
-            .collection("websites")
-            .doc(WEBSITE)
-            .collection("pages")
-            .doc("products")
-            .get();
-
-        const productData = productDoc.exists ? productDoc.data() : {};
-
-        const products = productData.products || [];
-
-        // Categories
-        const categorySnap = await adminDb
-            .collection("websites")
-            .doc(WEBSITE)
-            .collection("pages")
-            .doc("categoryproducts")
-            .collection("categories")
-            .get();
-
-        const categories = categorySnap.docs.map((doc) => ({
-            id: doc.id,
-            ...doc.data(),
-        }));
+        let districts = [];
+        try {
+            let snap = await getDocs(
+                collection(db, "websites", "centralbiomedicalcom", "districts")
+            );
+            if (snap.empty) {
+                snap = await getDocs(
+                    collection(db, "websites", "centralbiomedicals", "districts")
+                );
+            }
+            districts = snap.docs.map((doc) => ({
+                id: doc.id,
+                ...doc.data(),
+            }));
+        } catch (dErr) {
+            console.warn("Districts load warning for llms.txt:", dErr.message);
+        }
 
         // ===========================
-        // Published Products
+        // Categories Text
         // ===========================
-
-        const publishedProducts = products.filter(
-            (item) => item.isPublished === true
-        );
-
-        // ===========================
-        // Categories
-        // ===========================
-
         const categoryText =
             categories.length > 0
                 ? categories
                     .map((cat) => {
-
-                        const productList =
-                            (cat.products || [])
-                                .map((item) => `- ${item.title}`)
-                                .join("\n");
+                        const productList = (cat.products || [])
+                            .map((item) => `- ${item.title || item.name}`)
+                            .join("\n");
 
                         return `
-
 ## ${cat.category}
 
-Category ID:
-${cat.id}
+Category ID: ${cat.id}
+Total Products: ${cat.products?.length || 0}
 
-Total Products:
-${cat.products?.length || 0}
-
-Products
-
+Products:
 ${productList || "No Products"}
-
 `;
-
                     })
                     .join("\n")
                 : "No Categories Found";
 
         // ===========================
-        // Products
+        // Products Text
         // ===========================
-
         const productText =
             publishedProducts.length > 0
                 ? publishedProducts
                     .map((product) => {
-
                         return `
+# ${product.title || product.name}
 
-# ${product.title}
+Category: ${product.category || "N/A"}
+Subcategory: ${product.subCategory || "N/A"}
+Brand: ${product.brand || "Raj Biosis"}
+Model: ${product.model || "N/A"}
+Description: ${product.desc || product.description || "No description available"}
+Instrument: ${product.instrument || "N/A"}
+Automation: ${product.automation || "N/A"}
+Usage: ${product.usage || "N/A"}
+Throughput: ${product.throughput || "N/A"}
+Capacity: ${product.capacity || "N/A"}
+Availability: ${product.availability || "In Stock"}
+Price: ${product.price ? `₹${product.price}` : "Contact for Price"}
+Product URL: ${DOMAIN}/items/${product.slug || product.id}
 
-Category:
-${product.category || "N/A"}
-
-Brand:
-${product.brand || "N/A"}
-
-Model:
-${product.model || "N/A"}
-
-Description:
-${product.desc || "No description available"}
-
-Instrument:
-${product.instrument || "N/A"}
-
-Automation:
-${product.automation || "N/A"}
-
-Usage:
-${product.usage || "N/A"}
-
-Throughput:
-${product.throughput || "N/A"}
-
-Capacity:
-${product.capacity || "N/A"}
-
-Availability:
-${product.availability || "N/A"}
-
-Price:
-${product.price || "Contact for Price"}
-
-Product URL:
-
-${DOMAIN}/items/${product.slug || product.id}
-
-
-
-${[product.title, product.brand, product.category, product.model,
+Tags: ${[
+                            product.title,
+                            product.brand,
+                            product.category,
+                            product.subCategory,
+                            product.model,
                             product.instrument,
-                            product.automation,
-                            product.usage,
-                            ]
-                                .filter(Boolean)
-                                .join(", ")
-                            }
+                        ]
+                            .filter(Boolean)
+                            .join(", ")}
 `;
                     })
                     .join("\n")
                 : "No Products Found";
 
-
         // ===========================
-        // Districts
+        // District Text
         // ===========================
-
         const districtText =
             districts.length > 0
                 ? districts
-                    .map(
-                        (item) =>
-                            `${DOMAIN}/${item.slug}`
-                    )
+                    .map((item) => `${DOMAIN}/${item.slug || item.id}`)
                     .join("\n")
                 : "No Districts Found";
 
         // ===========================
-        // llms.txt
+        // Full LLMS Content
         // ===========================
-
         const content = `
-## Statistics
+# Central Biomedicals & Raj Biosis
 
-Products:
-${publishedProducts.length}
+India's Trusted Biomedical & Medical Diagnostic Equipment Manufacturer & Exporter
 
-Categories:
-${categories.length}
+Website: ${DOMAIN}
+Published Products: ${publishedProducts.length}
+Categories: ${categories.length}
+Districts: ${districts.length}
 
-Districts:
-${districts.length}
-# Central Biomedical
+## About
+Central Biomedicals is a premier Indian manufacturer and global exporter of medical diagnostic equipment, hematology analyzers, biochemistry analyzers, ELISA readers, and laboratory instruments.
 
-India's Trusted Biomedical Equipment Company
-
-Website
-
-${DOMAIN}
-
-Published Products
-
-${publishedProducts.length}
-
-Categories
-
-${categories.length}
-
-District Pages
-
-${districts.length}
-Company
-
-Central Biomedical is one of India's trusted Biomedical Equipment suppliers.
-
-Services
-
+## Services
 - Biomedical Equipment Supply
-- Laboratory Equipment
-- Diagnostic Equipment
-- Installation
-- AMC
-- Calibration
-- Repair
-- Technical Support
-- Pan India Delivery
-
-Search Keywords
-
-Biomedical Equipment
-
-Laboratory Equipment
-
-Diagnostic Equipment
-
-Hospital Equipment
-
-Medical Equipment
-
-ICU Equipment
-
-Operation Theatre Equipment
-
-Biochemistry Analyzer
-
-Electrolyte Analyzer
-
-CLIA Analyzer
-
-Immunoassay Analyzer
-------------------------------------------------
+- Laboratory Equipment Manufacturing
+- Diagnostic Equipment Export
+- Installation Support & Training
+- Technical Calibration & Support
+- Pan India & Global Freight Delivery
 
 ## Categories
-
 ${categoryText}
 
 ------------------------------------------------
 
 ## Products
-
 ${productText}
 
 ------------------------------------------------
 
-## District Pages
-
+## District Landing Pages
 ${districtText}
 
 ------------------------------------------------
 
-Sitemap
-
-${DOMAIN}/sitemap.xml
-
-Robots
-
-${DOMAIN}/robots.txt
-
-Contact
-
-${DOMAIN}/contact
-Last Updated
-
-${new Date().toISOString()}
-
+Sitemap: ${DOMAIN}/sitemap.xml
+Robots: ${DOMAIN}/robots.txt
+Contact: ${DOMAIN}/contact
+Last Updated: ${new Date().toISOString()}
 `;
+
         return new NextResponse(content, {
             headers: {
                 "Content-Type": "text/plain; charset=utf-8",
-                "Cache-Control": "public,max-age=3600",
+                "Cache-Control": "public, max-age=3600",
             },
         });
     } catch (e) {
@@ -298,5 +182,4 @@ ${new Date().toISOString()}
             }
         );
     }
-
 }
