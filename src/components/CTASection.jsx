@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { motion } from "framer-motion";
@@ -7,10 +8,30 @@ import {
   ArrowRight,
   PhoneCall,
 } from "lucide-react";
+import { fetchContactData } from "@/lib/data-fetcher";
+import { parseContactInfo } from "@/lib/contact-parser";
 
 export default function CTASection({ city }) {
-
+  const [contactInfo, setContactInfo] = useState([]);
   const pathname = usePathname();
+
+  useEffect(() => {
+    const loadContact = async () => {
+      try {
+        const data = await fetchContactData();
+        if (data) {
+          setContactInfo(data.contactInfo || (Array.isArray(data) ? data : []));
+        }
+      } catch (err) {
+        console.error("Error loading contact in CTASection:", err);
+      }
+    };
+
+    loadContact();
+  }, []);
+
+  const parsed = parseContactInfo(contactInfo);
+  const primaryPhone = parsed.phones[0] ? parsed.phones[0].replace(/[^0-9+]/g, "") : "";
 
   const staticRoutes = [
     "about",
@@ -117,12 +138,14 @@ export default function CTASection({ city }) {
                     </button>
                   </Link>
 
-                  <a
-                    href="tel:+919983123469"
-                    className="border border-slate-300 px-6 py-4 rounded-2xl font-semibold hover:bg-slate-100 transition text-center"
-                  >
-                    Call Now
-                  </a>
+                  {primaryPhone && (
+                    <a
+                      href={`tel:${primaryPhone}`}
+                      className="border border-slate-300 px-6 py-4 rounded-2xl font-semibold hover:bg-slate-100 transition text-center"
+                    >
+                      Call Now
+                    </a>
+                  )}
 
                 </div>
 

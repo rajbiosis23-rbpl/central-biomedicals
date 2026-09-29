@@ -1,21 +1,7 @@
-import { initializeApp } from "firebase/app";
-import {
-  getFirestore,
-  setLogLevel,
-} from "firebase/firestore";
+/**
+ * DEPRECATED: Firebase has been migrated to local SQLite database (catalog.db).
+ * All data operations now go through SQLite DB (@/lib/sqliteDb.js & @/lib/admin-api.js).
+ */
 
-import { getAuth } from "firebase/auth";
-const firebaseConfig = {
-  apiKey: "AIzaSyDGIJXX3MR1CxmIJbJHyVzbfRa0M0Sw6FQ",
-  authDomain: "rajbiosis-central.firebaseapp.com",
-  projectId: "rajbiosis-central",
-  storageBucket: "rajbiosis-central.firebasestorage.app",
-  messagingSenderId: "190335913620",
-  appId: "1:190335913620:web:99a14edcbb528f06c1ee81"
-};
-
-const app = initializeApp(firebaseConfig);
-export const db = getFirestore(app);
-setLogLevel("silent");
-
-export const auth = getAuth(app);
+export const db = null;
+export const auth = null;

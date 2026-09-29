@@ -1,12 +1,9 @@
 "use client";
+
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import {
-  addDoc,
-  collection,
-} from "firebase/firestore";
-import { db } from "@/lib/firebase";
 import { fetchContactData, fetchDistrictData } from "@/lib/data-fetcher";
+import { parseContactInfo } from "@/lib/contact-parser";
 import toast from "react-hot-toast";
 import {
   Mail,
@@ -67,28 +64,28 @@ export default function ContactPage() {
     try {
       setSubmitting(true);
 
-      await addDoc(
-        collection(
-          db,
-          "websitesQueries",
-          "centralbiomedicals",
-          "contactQueries"
-        ),
-        {
-          ...form,
-          createdAt: new Date(),
-        }
-      );
-
-      toast.success("Message submitted successfully");
-
-      setForm({
-        name: "",
-        email: "",
-        phone: "",
-        subject: "",
-        message: "",
+      const res = await fetch("/api/contact-query", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(form),
       });
+
+      const data = await res.json();
+
+      if (res.ok && data.success !== false) {
+        toast.success("Message submitted successfully");
+        setForm({
+          name: "",
+          email: "",
+          phone: "",
+          subject: "",
+          message: "",
+        });
+      } else {
+        toast.error(data.error || "Something went wrong");
+      }
     } catch (err) {
       console.error("Error submitting contact query:", err);
       toast.error("Something went wrong");
@@ -118,7 +115,7 @@ export default function ContactPage() {
       try {
         const data = await fetchContactData();
         if (data) {
-          setContactInfo(data.contactInfo || []);
+          setContactInfo(data.contactInfo || (Array.isArray(data) ? data : []));
         }
       } catch (err) {
         console.error("Error loading contact info in contact page:", err);
@@ -130,14 +127,10 @@ export default function ContactPage() {
     loadContact();
   }, []);
 
-  const phone = contactInfo.find((x) => x.label === "Phone Number")?.value || "";
-  const email = contactInfo.find((x) => x.label === "Email Address")?.value || "";
-  const address = contactInfo.find((x) => x.label === "Office Address")?.value || "";
-  const hours = contactInfo.find((x) => x.label === "Working Hours")?.value || "";
-
+  const parsed = parseContactInfo(contactInfo);
   const dynamicAddress = districtData
     ? `${districtData.district}, ${districtData.state}, India`
-    : address;
+    : parsed.address;
 
   if (loading) {
     return (
@@ -182,44 +175,70 @@ export default function ContactPage() {
             </p>
 
             <div className="mt-10 space-y-6">
-              <div className="flex items-start gap-4">
-                <div className="w-14 h-14 rounded-2xl bg-sky-100 text-sky-700 flex items-center justify-center shrink-0">
-                  <MapPin size={24} />
+              {dynamicAddress && (
+                <div className="flex items-start gap-4">
+                  <div className="w-14 h-14 rounded-2xl bg-sky-100 text-sky-700 flex items-center justify-center shrink-0">
+                    <MapPin size={24} />
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-lg">Office Address</h4>
+                    <p className="text-slate-600 mt-1 leading-7">{dynamicAddress}</p>
+                  </div>
                 </div>
-                <div>
-                  <h4 className="font-semibold text-lg">Office Address</h4>
-                  <p className="text-slate-600 mt-1 leading-7">{dynamicAddress}</p>
-                </div>
-              </div>
+              )}
 
-              <div className="flex items-start gap-4">
-                <div className="w-14 h-14 rounded-2xl bg-sky-100 text-sky-700 flex items-center justify-center shrink-0">
-                  <Phone size={24} />
+              {parsed.phones.length > 0 && (
+                <div className="flex items-start gap-4">
+                  <div className="w-14 h-14 rounded-2xl bg-sky-100 text-sky-700 flex items-center justify-center shrink-0">
+                    <Phone size={24} />
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-lg">Phone Number</h4>
+                    <div className="text-slate-600 mt-1 leading-7 space-y-1">
+                      {parsed.phones.map((phoneNum, idx) => (
+                        <a
+                          key={idx}
+                          href={`tel:${phoneNum.replace(/[^0-9+]/g, "")}`}
+                          className="hover:text-sky-700 transition block"
+                        >
+                          {phoneNum}
+                        </a>
+                      ))}
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <h4 className="font-semibold text-lg">Phone Number</h4>
-                  <p className="text-slate-600 mt-1 leading-7">{phone}</p>
-                </div>
-              </div>
+              )}
 
-              <div className="flex items-start gap-4">
-                <div className="w-14 h-14 rounded-2xl bg-sky-100 text-sky-700 flex items-center justify-center shrink-0">
-                  <Mail size={24} />
+              {parsed.emails.length > 0 && (
+                <div className="flex items-start gap-4">
+                  <div className="w-14 h-14 rounded-2xl bg-sky-100 text-sky-700 flex items-center justify-center shrink-0">
+                    <Mail size={24} />
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-lg">Email Address</h4>
+                    <div className="text-slate-600 mt-1 leading-7 space-y-1">
+                      {parsed.emails.map((emailStr, idx) => (
+                        <a
+                          key={idx}
+                          href={`mailto:${emailStr}`}
+                          className="hover:text-sky-700 transition block"
+                        >
+                          {emailStr}
+                        </a>
+                      ))}
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <h4 className="font-semibold text-lg">Email Address</h4>
-                  <p className="text-slate-600 mt-1 leading-7">{email}</p>
-                </div>
-              </div>
+              )}
 
-              {hours && (
+              {parsed.workingHours && (
                 <div className="flex items-start gap-4">
                   <div className="w-14 h-14 rounded-2xl bg-sky-100 text-sky-700 flex items-center justify-center shrink-0">
                     <Clock3 size={24} />
                   </div>
                   <div>
                     <h4 className="font-semibold text-lg">Working Hours</h4>
-                    <p className="text-slate-600 mt-1 leading-7">{hours}</p>
+                    <p className="text-slate-600 mt-1 leading-7">{parsed.workingHours}</p>
                   </div>
                 </div>
               )}

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { fetchFullCatalogData } from "@/lib/db-server";
+import { fetchFullCatalog, fetchFullCatalogData } from "@/lib/db-server";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -13,12 +13,12 @@ const NO_CACHE_HEADERS = {
 
 export async function GET() {
   try {
-    const data = await fetchFullCatalogData();
-    return NextResponse.json(data, { headers: NO_CACHE_HEADERS });
+    const products = await fetchFullCatalog();
+    return NextResponse.json({ success: true, products }, { headers: NO_CACHE_HEADERS });
   } catch (error) {
-    console.error("[api/catalog] Error fetching catalog:", error);
+    console.error("[api/products] Error fetching products:", error);
     return NextResponse.json(
-      { categoryProducts: [], categoryList: [], products: [], error: String(error?.message || error) },
+      { success: false, products: [], error: String(error?.message || error) },
       { status: 500, headers: NO_CACHE_HEADERS }
     );
   }

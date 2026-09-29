@@ -1,270 +1,299 @@
-import { db } from "./firebase";
-import { doc, getDoc, getDocs, collection } from "firebase/firestore";
 import {
-  CURRENT_COMPANY_ID,
-  CURRENT_WEBSITE_ID,
-  isVisibleOnWebsite,
+  WEBSITE_ID,
+  PRIMARY_COMPANY,
+  ALL_COMPANIES,
+  normalizeDomainId,
+  normalizeSiteId,
+  detectCompanyId,
   makeSlug,
-} from "./constants";
+  normalizeSlug,
+  isItemVisibleOnWebsite,
+  isVisibleOnWebsite,
+  normalizeProduct,
+} from "./catalog-utils.js";
 
-// Simple short-lived in-memory cache for Firestore documents (clears quickly so no stale locks)
-const docCache = {};
+export {
+  WEBSITE_ID,
+  PRIMARY_COMPANY,
+  ALL_COMPANIES,
+  normalizeDomainId,
+  normalizeSiteId,
+  detectCompanyId,
+  makeSlug,
+  normalizeSlug,
+  isItemVisibleOnWebsite,
+  isVisibleOnWebsite,
+  normalizeProduct,
+};
+
+let clientCatalogPromise = null;
 
 /**
- * Fetch a single document with brief cache.
+ * Fetch master catalog products array
  */
-export async function fetchDocCached(path) {
-  const now = Date.now();
-  if (docCache[path] && (now - docCache[path].time) < 2000) {
-    return docCache[path].data;
-  }
-
-  try {
-    const parts = path.split("/").filter(Boolean);
-    const docRef = doc(db, ...parts);
-    const snap = await getDoc(docRef);
-    if (snap.exists()) {
-      const data = snap.data();
-      docCache[path] = { data, time: now };
-      return data;
-    }
-    return null;
-  } catch (err) {
-    console.error(`Error fetching doc at ${path}:`, err);
-    throw err;
-  }
+export async function fetchFullCatalog() {
+  const data = await fetchFullCatalogData();
+  return data?.categoryProducts || data?.products || [];
 }
 
 /**
- * Normalizes a product object exclusively from Master Catalog structure
+ * Fetch catalog data with categories hierarchy
  */
-function normalizeProduct(item, categoryName = "", subCategoryName = "", uidFallback = "") {
-  const title = item.title || item.name || "Untitled Product";
-  const slug = item.slug || makeSlug(title);
-  const images = Array.isArray(item.images) && item.images.length > 0
-    ? item.images
-    : item.image
-    ? [item.image]
-    : [];
+export async function fetchFullCatalogData() {
+  if (typeof window === "undefined") {
+    const { fetchFullCatalogData: fetchServerCatalog } = await import("./db-server.js");
+    return await fetchServerCatalog();
+  }
 
+  if (clientCatalogPromise) {
+    return clientCatalogPromise;
+  }
+
+  clientCatalogPromise = (async () => {
+    try {
+      const res = await fetch(`/api/catalog?_t=${Date.now()}`, {
+        cache: "no-store",
+        headers: {
+          "Cache-Control": "no-cache",
+          Pragma: "no-cache",
+        },
+      });
+      if (!res.ok) {
+        throw new Error(`Failed to fetch catalog: ${res.status}`);
+      }
+      const data = await res.json();
+      return data;
+    } catch (err) {
+      console.error("[data-fetcher] Error in fetchFullCatalogData:", err);
+      return { categoryProducts: [], categoryList: [], products: [] };
+    } finally {
+      clientCatalogPromise = null;
+    }
+  })();
+
+  return clientCatalogPromise;
+}
+
+export async function getCategoriesData() {
+  const data = await fetchFullCatalogData();
   return {
-    ...item,
-    id: item.id || item.productId || item.categoryProductId || uidFallback,
-    uid: item.uid || item.id || uidFallback,
-    title,
-    name: title,
-    slug,
-    category: categoryName || item.category || "Other Products",
-    subCategory: subCategoryName || item.subCategory || categoryName || item.category || "General",
-    categoryId: item.categoryId || makeSlug(categoryName),
-    subcategoryId: item.subcategoryId || makeSlug(subCategoryName),
-    price: item.price || "",
-    desc: item.desc || item.description || "",
-    description: item.desc || item.description || "",
-    brand: item.brand || "",
-    model: item.model || "",
-    capacity: item.capacity || "",
-    throughput: item.throughput || "",
-    instrument: item.instrument || "",
-    usage: item.usage || "",
-    parameters: item.parameters || "",
-    automation: item.automation || "",
-    availability: item.availability || "",
-    size: item.size || "",
-    images,
-    image: images[0] || item.image || "",
-    video: item.video || "",
-    pdf: item.pdf || "",
-    isPublished: item.isPublished !== false,
-    websiteIds: item.websiteIds || [],
-    type: item.type || (categoryName ? "category" : "normal"),
+    categoryList: data?.categoryList || [],
+    categoryProducts: data?.categoryProducts || [],
   };
 }
 
+export async function getProductBySlug(slug) {
+  if (!slug) return null;
+  const products = await fetchFullCatalog();
+  const target = normalizeSlug(slug);
+  return (
+    products.find((p) => {
+      if (!p) return false;
+      if (normalizeSlug(p.slug) === target) return true;
+      if (normalizeSlug(p.title) === target) return true;
+      if (p.slug === slug || p.id === slug || p.uid === slug) return true;
+      return false;
+    }) || null
+  );
+}
+
+export const findProductBySlug = getProductBySlug;
+
 /**
- * Fetch and process products EXCLUSIVELY from Master Catalog:
- * - companies/{companyId}/categories/{categoryId}/subcategories/{subcategoryId}
- * - companies/{companyId}/products
- * 
- * Strict cascading visibility logic applied.
- * NO fallback to legacy website documents or static mock data.
- * When all products are unassigned, strictly returns [] (empty array).
+ * Client/Server helper for site data
  */
-export async function fetchFullCatalog(
-  companyId = CURRENT_COMPANY_ID,
-  websiteId = CURRENT_WEBSITE_ID
-) {
-  const startTime = performance.now();
-  const allProducts = [];
-  const seenProductIds = new Set();
-  const seenProductSlugs = new Set();
+async function fetchSiteDataType(type) {
+  if (typeof window === "undefined") {
+    const dbServer = await import("./db-server.js");
+    switch (type) {
+      case "home":
+        return await dbServer.getHomeData();
+      case "contact":
+        return await dbServer.getContactData();
+      case "services":
+        return await dbServer.getServicesData();
+      default:
+        return null;
+    }
+  }
 
   try {
-    // =========================================================================
-    // 1. MASTER CATALOG: Categories & Subcategories
-    // Path: companies/{companyId}/categories/{categoryId}/subcategories/{subcategoryId}
-    // =========================================================================
-    try {
-      const categoriesCol = collection(db, "companies", companyId, "categories");
-      const categorySnap = await getDocs(categoriesCol);
-
-      if (!categorySnap.empty) {
-        await Promise.all(
-          categorySnap.docs.map(async (catDoc) => {
-            const catData = catDoc.data();
-            const categoryName = catData.name || catData.category || catDoc.id;
-
-            // 1. Category Visibility Check: If Category is hidden/unassigned, skip all subcategories & products
-            if (!isVisibleOnWebsite(catData, websiteId)) {
-              return;
-            }
-
-            // Fetch Subcategories
-            try {
-              const subcategoriesCol = collection(
-                db,
-                "companies",
-                companyId,
-                "categories",
-                catDoc.id,
-                "subcategories"
-              );
-              const subcategoriesSnap = await getDocs(subcategoriesCol);
-
-              subcategoriesSnap.docs.forEach((subDoc) => {
-                const subData = subDoc.data();
-                const subCategoryName = subData.name || subData.subCategory || subDoc.id;
-
-                // 2. Subcategory Visibility Check: If Subcategory is hidden/unassigned, skip all its products
-                if (!isVisibleOnWebsite(subData, websiteId)) {
-                  return;
-                }
-
-                // 3. Product Visibility Check: Only include products explicitly enabled for this website
-                const rawProducts = subData.products || [];
-                rawProducts.forEach((prod, index) => {
-                  if (!isVisibleOnWebsite(prod, websiteId)) {
-                    return;
-                  }
-
-                  const uid = prod.id || `${catDoc.id}-${subDoc.id}-${index}`;
-                  const normalized = normalizeProduct(prod, categoryName, subCategoryName, uid);
-
-                  if (!seenProductIds.has(normalized.id)) {
-                    seenProductIds.add(normalized.id);
-                    seenProductSlugs.add(normalized.slug);
-                    allProducts.push(normalized);
-                  }
-                });
-              });
-            } catch (subErr) {
-              console.error(`Error fetching subcategories for category ${catDoc.id}:`, subErr);
-            }
-
-            // Also check direct products on category document if any
-            if (catData.products?.length) {
-              catData.products.forEach((prod, index) => {
-                if (!isVisibleOnWebsite(prod, websiteId)) {
-                  return;
-                }
-
-                const uid = prod.id || `${catDoc.id}-direct-${index}`;
-                const normalized = normalizeProduct(prod, categoryName, categoryName, uid);
-
-                if (!seenProductIds.has(normalized.id)) {
-                  seenProductIds.add(normalized.id);
-                  seenProductSlugs.add(normalized.slug);
-                  allProducts.push(normalized);
-                }
-              });
-            }
-          })
-        );
-      }
-    } catch (masterCatErr) {
-      console.warn("Master categories fetch note:", masterCatErr.message);
-    }
-
-    // =========================================================================
-    // 2. MASTER CATALOG: Standalone / Normal Products
-    // Path: companies/{companyId}/products
-    // =========================================================================
-    try {
-      const normalCol = collection(db, "companies", companyId, "products");
-      const normalSnap = await getDocs(normalCol);
-
-      if (!normalSnap.empty) {
-        normalSnap.docs.forEach((docSnap) => {
-          const data = docSnap.data();
-          // Case A: Document contains an array of products
-          if (Array.isArray(data.products)) {
-            data.products.forEach((prod, idx) => {
-              if (!isVisibleOnWebsite(prod, websiteId)) return;
-              const uid = prod.id || `normal-${docSnap.id}-${idx}`;
-              const normalized = normalizeProduct(prod, prod.category || "Other Products", prod.subCategory || "General", uid);
-              if (!seenProductIds.has(normalized.id)) {
-                seenProductIds.add(normalized.id);
-                allProducts.push(normalized);
-              }
-            });
-          }
-          // Case B: Document represents a single product
-          else if (data.title || data.name) {
-            if (isVisibleOnWebsite(data, websiteId)) {
-              const uid = data.id || docSnap.id;
-              const normalized = normalizeProduct(data, data.category || "Other Products", data.subCategory || "General", uid);
-              if (!seenProductIds.has(normalized.id)) {
-                seenProductIds.add(normalized.id);
-                allProducts.push(normalized);
-              }
-            }
-          }
-        });
-      }
-    } catch (normalErr) {
-      console.warn("Master normal products fetch note:", normalErr.message);
-    }
-
-    const duration = performance.now() - startTime;
-    console.log(
-      `[data-fetcher] Master Catalog synced for "${websiteId}" (${allProducts.length} visible products) in ${duration.toFixed(2)}ms`
-    );
-
-    return allProducts;
+    const res = await fetch(`/api/site-data?type=${encodeURIComponent(type)}&_t=${Date.now()}`, {
+      cache: "no-store",
+      headers: {
+        "Cache-Control": "no-cache",
+        Pragma: "no-cache",
+      },
+    });
+    if (!res.ok) return null;
+    const json = await res.json();
+    return json?.data || null;
   } catch (err) {
-    console.error("Error fetching Master Catalog:", err);
+    console.error(`[data-fetcher] Error fetching site-data (${type}):`, err);
+    return null;
+  }
+}
+
+export async function fetchHomeData() {
+  return fetchSiteDataType("home");
+}
+
+export async function fetchContactData() {
+  const data = await fetchSiteDataType("contact");
+  if (Array.isArray(data)) return { contactInfo: data };
+  return data || { contactInfo: [] };
+}
+
+export async function fetchServicesData() {
+  const data = await fetchSiteDataType("services");
+  if (Array.isArray(data)) return { services: data };
+  return data || { services: [] };
+}
+
+export async function fetchDistrictData(district) {
+  if (!district || district.toLowerCase() === "jaipur") return null;
+
+  if (typeof window === "undefined") {
+    const { getDistrictData } = await import("./db-server.js");
+    return await getDistrictData(district);
+  }
+
+  try {
+    const res = await fetch(`/api/site-data?type=districts&_t=${Date.now()}`, {
+      cache: "no-store",
+      headers: { "Cache-Control": "no-cache" },
+    });
+    if (!res.ok) return null;
+    const json = await res.json();
+    const districts = json?.districts || json?.data || [];
+    const targetSlug = district.toLowerCase().trim();
+    if (Array.isArray(districts)) {
+      return districts.find((d) => (d.slug || d.id || "").toLowerCase() === targetSlug) || null;
+    }
+    return null;
+  } catch (err) {
+    console.error("[data-fetcher] Error fetching district data:", err);
+    return null;
+  }
+}
+
+export async function fetchDistrictsList() {
+  if (typeof window === "undefined") {
+    const { getDistrictsList } = await import("./db-server.js");
+    return await getDistrictsList();
+  }
+
+  try {
+    const res = await fetch(`/api/site-data?type=districts&_t=${Date.now()}`, {
+      cache: "no-store",
+      headers: { "Cache-Control": "no-cache" },
+    });
+    if (!res.ok) return [];
+    const json = await res.json();
+    const districts = json?.districts || json?.data || [];
+    if (Array.isArray(districts)) {
+      return districts.map((d) => (typeof d === "string" ? d : d.slug || d.id || "")).filter(Boolean);
+    }
+    return [];
+  } catch (err) {
+    console.error("[data-fetcher] Error fetching districts list:", err);
     return [];
   }
 }
 
 /**
- * Helpers for cached document retrieval across pages
+ * Subscribe to catalog updates in real-time.
  */
-export async function fetchHomeData() {
-  return (
-    (await fetchDocCached("websites/centralbiomedicalcom/pages/home")) ||
-    (await fetchDocCached("websites/centralbiomedicals/pages/home"))
-  );
+export function subscribeToCatalog(onUpdate) {
+  let active = true;
+
+  const checkUpdates = async () => {
+    if (!active || typeof onUpdate !== "function") return;
+    try {
+      const res = await fetch(`/api/catalog?_t=${Date.now()}`, {
+        cache: "no-store",
+        headers: { "Cache-Control": "no-cache" },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const prods = data?.categoryProducts || data?.products || (Array.isArray(data) ? data : []);
+        if (active && typeof onUpdate === "function") {
+          onUpdate(prods);
+        }
+      }
+    } catch (err) {
+      console.warn("[data-fetcher] subscribeToCatalog polling error:", err);
+    }
+  };
+
+  checkUpdates();
+  const interval = setInterval(checkUpdates, 2000);
+
+  const handleFocus = () => checkUpdates();
+  const handleVisibility = () => {
+    if (typeof document !== "undefined" && document.visibilityState === "visible") {
+      checkUpdates();
+    }
+  };
+
+  if (typeof window !== "undefined") {
+    window.addEventListener("focus", handleFocus);
+    window.addEventListener("visibilitychange", handleVisibility);
+  }
+
+  return () => {
+    active = false;
+    clearInterval(interval);
+    if (typeof window !== "undefined") {
+      window.removeEventListener("focus", handleFocus);
+      window.removeEventListener("visibilitychange", handleVisibility);
+    }
+  };
 }
 
-export async function fetchContactData() {
-  return (
-    (await fetchDocCached("websites/centralbiomedicalcom/pages/contact")) ||
-    (await fetchDocCached("websites/centralbiomedicals/pages/contact"))
-  );
-}
+/**
+ * Subscribe to site data in real-time.
+ */
+export function subscribeToSiteData(type = "home", onUpdate) {
+  let active = true;
 
-export async function fetchServicesData() {
-  return (
-    (await fetchDocCached("websites/centralbiomedicalcom/pages/services")) ||
-    (await fetchDocCached("websites/centralbiomedicals/pages/services"))
-  );
-}
+  const checkUpdates = async () => {
+    if (!active || typeof onUpdate !== "function") return;
+    try {
+      const res = await fetch(`/api/site-data?type=${encodeURIComponent(type)}&_t=${Date.now()}`, {
+        cache: "no-store",
+        headers: { "Cache-Control": "no-cache" },
+      });
+      if (res.ok) {
+        const json = await res.json();
+        const siteData = json?.data || null;
+        if (active && typeof onUpdate === "function") {
+          onUpdate(siteData);
+        }
+      }
+    } catch (err) {}
+  };
 
-export async function fetchDistrictData(district) {
-  if (!district) return null;
-  return (
-    (await fetchDocCached(`websites/centralbiomedicalcom/districts/${district}`)) ||
-    (await fetchDocCached(`websites/centralbiomedicals/districts/${district}`))
-  );
+  const interval = setInterval(checkUpdates, 2000);
+
+  const handleFocus = () => checkUpdates();
+  const handleVisibility = () => {
+    if (typeof document !== "undefined" && document.visibilityState === "visible") {
+      checkUpdates();
+    }
+  };
+
+  if (typeof window !== "undefined") {
+    window.addEventListener("focus", handleFocus);
+    window.addEventListener("visibilitychange", handleVisibility);
+  }
+
+  return () => {
+    active = false;
+    clearInterval(interval);
+    if (typeof window !== "undefined") {
+      window.removeEventListener("focus", handleFocus);
+      window.removeEventListener("visibilitychange", handleVisibility);
+    }
+  };
 }

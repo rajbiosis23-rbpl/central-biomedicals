@@ -47,10 +47,7 @@ export default function ServicesClient() {
   return (
     <>
       {/* Banner */}
-      <PageBanner
-        title="Our Services"
-        subtitle="Delivering trusted biomedical and diagnostic services with innovation, precision, and healthcare excellence."
-      />
+
 
       {/* Services Grid */}
       <section className="section-padding bg-white">
@@ -65,27 +62,27 @@ export default function ServicesClient() {
           <div className="grid lg:grid-cols-3 md:grid-cols-2 gap-8 mt-16">
             {loading
               ? Array.from({ length: 6 }).map((_, index) => (
-                  <div
-                    key={index}
-                    className="bg-white rounded-[30px] p-10 card-shadow border border-slate-100 animate-pulse"
-                  >
-                    <div className="w-20 h-20 rounded-3xl bg-slate-200 mb-8"></div>
-                    <div className="h-8 bg-slate-200 rounded mb-6"></div>
-                    <div className="space-y-3">
-                      <div className="h-4 bg-slate-200 rounded"></div>
-                      <div className="h-4 bg-slate-200 rounded w-11/12"></div>
-                      <div className="h-4 bg-slate-200 rounded w-8/12"></div>
-                    </div>
+                <div
+                  key={index}
+                  className="bg-white rounded-[30px] p-10 card-shadow border border-slate-100 animate-pulse"
+                >
+                  <div className="w-20 h-20 rounded-3xl bg-slate-200 mb-8"></div>
+                  <div className="h-8 bg-slate-200 rounded mb-6"></div>
+                  <div className="space-y-3">
+                    <div className="h-4 bg-slate-200 rounded"></div>
+                    <div className="h-4 bg-slate-200 rounded w-11/12"></div>
+                    <div className="h-4 bg-slate-200 rounded w-8/12"></div>
                   </div>
-                ))
+                </div>
+              ))
               : services.map((service, index) => (
-                  <ServiceCard
-                    key={index}
-                    icon={icons[index % icons.length]}
-                    title={service.title}
-                    description={service.desc}
-                  />
-                ))}
+                <ServiceCard
+                  key={index}
+                  icon={icons[index % icons.length]}
+                  title={service.title}
+                  description={service.desc}
+                />
+              ))}
           </div>
         </div>
       </section>

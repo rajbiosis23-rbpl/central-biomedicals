@@ -47,10 +47,7 @@ export default function ServicesPage() {
   return (
     <>
       {/* Banner */}
-      <PageBanner
-        title="Our Services"
-        subtitle="Delivering trusted biomedical and diagnostic services with innovation, precision, and healthcare excellence."
-      />
+
 
       {/* Services Grid */}
       <section className="section-padding bg-white">

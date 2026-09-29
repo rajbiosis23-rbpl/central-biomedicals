@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { fetchFullCatalogData } from "@/lib/db-server";
+import { fetchSiteDataFromAdmin, WEBSITE_ID } from "@/lib/admin-api";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -11,14 +11,18 @@ const NO_CACHE_HEADERS = {
   "Expires": "0",
 };
 
-export async function GET() {
+export async function GET(req) {
   try {
-    const data = await fetchFullCatalogData();
+    const { searchParams } = new URL(req.url);
+    const websiteId = searchParams.get("websiteId") || WEBSITE_ID;
+    const type = searchParams.get("type") || "all";
+
+    const data = await fetchSiteDataFromAdmin(websiteId, type);
     return NextResponse.json(data, { headers: NO_CACHE_HEADERS });
   } catch (error) {
-    console.error("[api/catalog] Error fetching catalog:", error);
+    console.error("[api/site-data] Error fetching site data:", error);
     return NextResponse.json(
-      { categoryProducts: [], categoryList: [], products: [], error: String(error?.message || error) },
+      { success: false, data: null, error: "Failed to fetch site data" },
       { status: 500, headers: NO_CACHE_HEADERS }
     );
   }

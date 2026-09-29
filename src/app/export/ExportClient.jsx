@@ -1,8 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { addDoc, collection } from "firebase/firestore";
-import { db } from "@/lib/firebase";
 import toast from "react-hot-toast";
 import {
   Globe,
@@ -52,32 +50,41 @@ export default function ExportClient() {
     try {
       setSubmitting(true);
 
-      await addDoc(
-        collection(
-          db,
-          "websitesQueries",
-          "centralbiomedicals",
-          "exportQueries"
-        ),
-        {
-          ...form,
-          createdAt: new Date(),
-        }
-      );
-
-      toast.success("Export quotation request submitted! Our international team will contact you promptly.");
-
-      setForm({
-        name: "",
-        email: "",
-        phone: "",
-        company: "",
-        country: "",
-        buyerType: "International Medical Distributor",
-        productInterest: "Hematology & Biochemistry Analyzers",
-        quantity: "Bulk Container / Multi-unit",
-        message: "",
+      const res = await fetch("/api/contact-query", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: form.name,
+          email: form.email,
+          phone: form.phone,
+          company: form.company,
+          country: form.country,
+          buyerType: form.buyerType,
+          subject: `Export Query: ${form.productInterest || form.buyerType}`,
+          message: `Product Interest: ${form.productInterest}\nQuantity: ${form.quantity}\nDetails: ${form.message}`,
+        }),
       });
+
+      const data = await res.json();
+
+      if (res.ok && data.success !== false) {
+        toast.success("Export quotation request submitted! Our international team will contact you promptly.");
+        setForm({
+          name: "",
+          email: "",
+          phone: "",
+          company: "",
+          country: "",
+          buyerType: "International Medical Distributor",
+          productInterest: "Hematology & Biochemistry Analyzers",
+          quantity: "Bulk Container / Multi-unit",
+          message: "",
+        });
+      } else {
+        toast.error(data.error || "Something went wrong. Please try again.");
+      }
     } catch (err) {
       console.error("Error submitting export query:", err);
       toast.error("Something went wrong. Please try again.");

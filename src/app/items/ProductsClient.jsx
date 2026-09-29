@@ -491,7 +491,7 @@ export default function ProductsClient({ initialProducts = [], district = null, 
                 <div className="mt-8 flex justify-center gap-4">
                   <Link
                     href="/contact"
-                    className="px-6 py-3 rounded-xl bg-sky-700 text-white font-semibold hover:bg-sky-800 transition"
+                    className="px-6 py-3 rounded-xl bg-sky-700 !text-white font-semibold hover:bg-sky-800 transition"
                   >
                     Contact Support
                   </Link>

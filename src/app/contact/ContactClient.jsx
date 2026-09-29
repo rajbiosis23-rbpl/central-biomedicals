@@ -1,9 +1,9 @@
 "use client";
+
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { addDoc, collection } from "firebase/firestore";
-import { db } from "@/lib/firebase";
 import { fetchContactData, fetchDistrictData } from "@/lib/data-fetcher";
+import { parseContactInfo } from "@/lib/contact-parser";
 import toast from "react-hot-toast";
 import { Mail, Phone, MapPin, Clock3, Globe, Building } from "lucide-react";
 
@@ -62,31 +62,31 @@ export default function ContactClient() {
     try {
       setSubmitting(true);
 
-      await addDoc(
-        collection(
-          db,
-          "websitesQueries",
-          "centralbiomedicals",
-          "contactQueries"
-        ),
-        {
-          ...form,
-          createdAt: new Date(),
-        }
-      );
-
-      toast.success("Message submitted successfully. Our export team will contact you shortly.");
-
-      setForm({
-        name: "",
-        email: "",
-        phone: "",
-        company: "",
-        country: "India",
-        buyerType: "Distributor / Importer",
-        subject: "",
-        message: "",
+      const res = await fetch("/api/contact-query", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(form),
       });
+
+      const data = await res.json();
+
+      if (res.ok && data.success !== false) {
+        toast.success("Message submitted successfully. Our export team will contact you shortly.");
+        setForm({
+          name: "",
+          email: "",
+          phone: "",
+          company: "",
+          country: "India",
+          buyerType: "Distributor / Importer",
+          subject: "",
+          message: "",
+        });
+      } else {
+        toast.error(data.error || "Something went wrong");
+      }
     } catch (err) {
       console.error("Error submitting contact query:", err);
       toast.error("Something went wrong");
@@ -116,7 +116,7 @@ export default function ContactClient() {
       try {
         const data = await fetchContactData();
         if (data) {
-          setContactInfo(data.contactInfo || []);
+          setContactInfo(data.contactInfo || (Array.isArray(data) ? data : []));
         }
       } catch (err) {
         console.error("Error loading contact info in contact page:", err);
@@ -128,14 +128,10 @@ export default function ContactClient() {
     loadContact();
   }, []);
 
-  const phone = contactInfo.find((x) => x.label === "Phone Number")?.value || "+91 9983123469";
-  const email = contactInfo.find((x) => x.label === "Email Address")?.value || "info@centralbiomedicals.com";
-  const address = contactInfo.find((x) => x.label === "Office Address")?.value || "India";
-  const hours = contactInfo.find((x) => x.label === "Working Hours")?.value || "";
-
+  const parsed = parseContactInfo(contactInfo);
   const dynamicAddress = districtData
     ? `${districtData.district}, ${districtData.state}, India`
-    : address;
+    : parsed.address;
 
   if (loading) {
     return (
@@ -164,8 +160,8 @@ export default function ContactClient() {
   return (
     <>
       <PageBanner
-        title={districtData ? `Contact Us in ${districtData.district}` : "Contact & Export Inquiries"}
-        subtitle="Get in touch with Central Biomedicals for reliable diagnostic equipment, domestic sales, and international export orders."
+        title={districtData ? `Contact Us in ${districtData.district}` : "Contact Us & B2B Inquiries"}
+        subtitle="Get in touch with Central Biomedicals for reliable diagnostic and laboratory equipment support worldwide."
       />
 
       <section className="section-padding bg-white">
@@ -175,49 +171,75 @@ export default function ContactClient() {
               Get in Touch
             </h2>
             <p className="mt-5 text-slate-600 leading-8 text-lg">
-              Have questions about our medical equipment, pricing, OEM solutions, or export requirements?
+              Have questions about our biomedical instruments, export pricing, bulk distribution, or technical support?
               Fill out the form or reach us directly.
             </p>
 
             <div className="mt-10 space-y-6">
-              <div className="flex items-start gap-4">
-                <div className="w-14 h-14 rounded-2xl bg-sky-100 text-sky-700 flex items-center justify-center shrink-0">
-                  <MapPin size={24} />
+              {dynamicAddress && (
+                <div className="flex items-start gap-4">
+                  <div className="w-14 h-14 rounded-2xl bg-sky-100 text-sky-700 flex items-center justify-center shrink-0">
+                    <MapPin size={24} />
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-lg">Office Address</h4>
+                    <p className="text-slate-600 mt-1 leading-7">{dynamicAddress}</p>
+                  </div>
                 </div>
-                <div>
-                  <h4 className="font-semibold text-lg">Office Address</h4>
-                  <p className="text-slate-600 mt-1 leading-7">{dynamicAddress}</p>
-                </div>
-              </div>
+              )}
 
-              <div className="flex items-start gap-4">
-                <div className="w-14 h-14 rounded-2xl bg-sky-100 text-sky-700 flex items-center justify-center shrink-0">
-                  <Phone size={24} />
+              {parsed.phones.length > 0 && (
+                <div className="flex items-start gap-4">
+                  <div className="w-14 h-14 rounded-2xl bg-sky-100 text-sky-700 flex items-center justify-center shrink-0">
+                    <Phone size={24} />
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-lg">Phone Number</h4>
+                    <div className="text-slate-600 mt-1 leading-7 space-y-1">
+                      {parsed.phones.map((phoneNum, idx) => (
+                        <a
+                          key={idx}
+                          href={`tel:${phoneNum.replace(/[^0-9+]/g, "")}`}
+                          className="hover:text-sky-700 transition block"
+                        >
+                          {phoneNum}
+                        </a>
+                      ))}
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <h4 className="font-semibold text-lg">Phone Number</h4>
-                  <p className="text-slate-600 mt-1 leading-7">{phone}</p>
-                </div>
-              </div>
+              )}
 
-              <div className="flex items-start gap-4">
-                <div className="w-14 h-14 rounded-2xl bg-sky-100 text-sky-700 flex items-center justify-center shrink-0">
-                  <Mail size={24} />
+              {parsed.emails.length > 0 && (
+                <div className="flex items-start gap-4">
+                  <div className="w-14 h-14 rounded-2xl bg-sky-100 text-sky-700 flex items-center justify-center shrink-0">
+                    <Mail size={24} />
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-lg">Email Address</h4>
+                    <div className="text-slate-600 mt-1 leading-7 space-y-1">
+                      {parsed.emails.map((emailStr, idx) => (
+                        <a
+                          key={idx}
+                          href={`mailto:${emailStr}`}
+                          className="hover:text-sky-700 transition block"
+                        >
+                          {emailStr}
+                        </a>
+                      ))}
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <h4 className="font-semibold text-lg">Email Address</h4>
-                  <p className="text-slate-600 mt-1 leading-7">{email}</p>
-                </div>
-              </div>
+              )}
 
-              {hours && (
+              {parsed.workingHours && (
                 <div className="flex items-start gap-4">
                   <div className="w-14 h-14 rounded-2xl bg-sky-100 text-sky-700 flex items-center justify-center shrink-0">
                     <Clock3 size={24} />
                   </div>
                   <div>
                     <h4 className="font-semibold text-lg">Working Hours</h4>
-                    <p className="text-slate-600 mt-1 leading-7">{hours}</p>
+                    <p className="text-slate-600 mt-1 leading-7">{parsed.workingHours}</p>
                   </div>
                 </div>
               )}
@@ -226,7 +248,7 @@ export default function ContactClient() {
 
           <div className="bg-slate-50 border border-slate-100 p-8 sm:p-10 rounded-[36px] shadow-sm">
             <h3 className="text-2xl font-bold text-slate-900 mb-6">
-              Send Enquiry / Request Quote
+              Send Message
             </h3>
 
             <form onSubmit={handleSubmit} className="space-y-5">
@@ -237,7 +259,8 @@ export default function ContactClient() {
                 <input
                   type="text"
                   name="name"
-                  placeholder="Your Name"
+                  placeholder="Your Full Name"
+                  required
                   value={form.name}
                   onChange={handleChange}
                   className="w-full bg-white border border-slate-200 rounded-2xl px-5 py-4 outline-none focus:ring-2 focus:ring-sky-600"
@@ -253,6 +276,7 @@ export default function ContactClient() {
                     type="email"
                     name="email"
                     placeholder="Your Email"
+                    required
                     value={form.email}
                     onChange={handleChange}
                     className="w-full bg-white border border-slate-200 rounded-2xl px-5 py-4 outline-none focus:ring-2 focus:ring-sky-600"
@@ -260,12 +284,13 @@ export default function ContactClient() {
                 </div>
                 <div>
                   <label className="text-sm font-semibold text-slate-700 block mb-2">
-                    Phone / WhatsApp *
+                    Phone / Mobile *
                   </label>
                   <input
                     type="tel"
                     name="phone"
-                    placeholder="+91 98765 43210"
+                    placeholder="Your Mobile Number"
+                    required
                     value={form.phone}
                     onChange={handleChange}
                     className="w-full bg-white border border-slate-200 rounded-2xl px-5 py-4 outline-none focus:ring-2 focus:ring-sky-600"
@@ -275,26 +300,26 @@ export default function ContactClient() {
 
               <div className="grid sm:grid-cols-2 gap-5">
                 <div>
-                  <label className="text-sm font-semibold text-slate-700 block mb-2 flex items-center gap-1">
-                    <Building size={14} /> Company / Hospital Name
+                  <label className="text-sm font-semibold text-slate-700 block mb-2">
+                    Company / Organization
                   </label>
                   <input
                     type="text"
                     name="company"
-                    placeholder="Company or Hospital"
+                    placeholder="Hospital, Lab or Business"
                     value={form.company}
                     onChange={handleChange}
                     className="w-full bg-white border border-slate-200 rounded-2xl px-5 py-4 outline-none focus:ring-2 focus:ring-sky-600"
                   />
                 </div>
                 <div>
-                  <label className="text-sm font-semibold text-slate-700 block mb-2 flex items-center gap-1">
-                    <Globe size={14} /> Country
+                  <label className="text-sm font-semibold text-slate-700 block mb-2">
+                    Country
                   </label>
                   <input
                     type="text"
                     name="country"
-                    placeholder="e.g. Kenya, UAE, India"
+                    placeholder="e.g. India, UAE, Kenya"
                     value={form.country}
                     onChange={handleChange}
                     className="w-full bg-white border border-slate-200 rounded-2xl px-5 py-4 outline-none focus:ring-2 focus:ring-sky-600"
@@ -304,30 +329,12 @@ export default function ContactClient() {
 
               <div>
                 <label className="text-sm font-semibold text-slate-700 block mb-2">
-                  Buyer Category
-                </label>
-                <select
-                  name="buyerType"
-                  value={form.buyerType}
-                  onChange={handleChange}
-                  className="w-full bg-white border border-slate-200 rounded-2xl px-5 py-4 outline-none focus:ring-2 focus:ring-sky-600"
-                >
-                  <option value="Distributor / Importer">International Medical Distributor / Importer</option>
-                  <option value="Hospital / Healthcare Facility">Hospital / Pathology Laboratory</option>
-                  <option value="OEM / Private Label Buyer">OEM / Private Label Partner</option>
-                  <option value="Government / NGO Procurement">Government / NGO Procurement</option>
-                  <option value="Domestic Dealer">Domestic Dealer / Supplier</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="text-sm font-semibold text-slate-700 block mb-2">
-                  Subject / Product Interest
+                  Subject / Requirement
                 </label>
                 <input
                   type="text"
                   name="subject"
-                  placeholder="e.g., Bulk Hematology Analyzer Order / Quotation"
+                  placeholder="Quotation, Product Enquiry, Distribution..."
                   value={form.subject}
                   onChange={handleChange}
                   className="w-full bg-white border border-slate-200 rounded-2xl px-5 py-4 outline-none focus:ring-2 focus:ring-sky-600"
@@ -336,12 +343,13 @@ export default function ContactClient() {
 
               <div>
                 <label className="text-sm font-semibold text-slate-700 block mb-2">
-                  Message / Quantity Requirements *
+                  Message *
                 </label>
                 <textarea
                   name="message"
                   rows={4}
-                  placeholder="Describe your equipment requirements, target quantities, or delivery destination..."
+                  required
+                  placeholder="Tell us about your requirements..."
                   value={form.message}
                   onChange={handleChange}
                   className="w-full bg-white border border-slate-200 rounded-2xl px-5 py-4 outline-none focus:ring-2 focus:ring-sky-600 resize-none"
@@ -353,7 +361,7 @@ export default function ContactClient() {
                 disabled={submitting}
                 className="w-full bg-sky-700 text-white font-semibold py-4 rounded-2xl hover:bg-sky-800 transition disabled:opacity-50"
               >
-                {submitting ? "Submitting..." : "Send Export & Product Inquiry"}
+                {submitting ? "Submitting..." : "Send Message"}
               </button>
             </form>
           </div>

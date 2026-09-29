@@ -12,7 +12,9 @@ import {
   ArrowRight,
   ShieldCheck,
   Microscope,
-  BadgeCheck,
+  Award,
+  Sparkles,
+  CheckCircle2,
 } from "lucide-react";
 
 export default function HeroSection({ city }) {
@@ -23,6 +25,7 @@ export default function HeroSection({ city }) {
     description: "",
     button1Text: "",
     button2Text: "",
+    badge: "",
   });
 
   useEffect(() => {
@@ -52,178 +55,170 @@ export default function HeroSection({ city }) {
   };
 
   return (
-    <section className="gradient-bg overflow-hidden">
-      <div className="container-custom min-h-[85vh] py-20 lg:py-0 grid lg:grid-cols-2 gap-14 items-center">
+    <section className="relative bg-gradient-to-b from-sky-50/70 via-slate-50/40 to-white overflow-hidden">
+      {/* Ambient background glow accents */}
+      <div className="absolute top-0 left-1/4 w-96 h-96 bg-sky-200/30 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute top-1/3 right-10 w-80 h-80 bg-teal-100/40 rounded-full blur-3xl pointer-events-none" />
 
-        {/* Left Content */}
-        <motion.div
-          initial={{ opacity: 0, y: 70 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.7 }}
-        >
+      <div className="container-custom py-12 sm:py-16 lg:py-20">
+        <div className="grid lg:grid-cols-12 gap-10 lg:gap-12 items-center">
 
-          {/* Badge */}
-          <div className="inline-flex items-center gap-2 bg-sky-100 text-sky-700 px-4 py-2 rounded-full text-sm font-semibold mb-7">
-            <ShieldCheck size={18} />
-            Trusted Biomedical Systems
-          </div>
-
-          {/* Title */}
-          <h1 className="text-4xl sm:text-5xl lg:text-7xl font-bold leading-tight text-slate-900">
-            {loading ? (
-              <div className="animate-pulse space-y-4">
-                <div className="h-12 bg-gray-200 rounded w-[80%]"></div>
-                <div className="h-12 bg-gray-200 rounded w-[60%]"></div>
-                <div className="h-12 bg-gray-200 rounded w-[70%]"></div>
-              </div>
-            ) : (
-              <>
-                {heroData.title}
-
-                {city && (
-                  <>
-                    <br />
-                    <span className="text-2xl lg:text-4xl text-sky-700 font-semibold">
-                      in {city}
-                    </span>
-                  </>
-                )}
-              </>
-            )}
-          </h1>
-
-          {/* Description */}
-          {loading ? (
-            <div className="animate-pulse mt-7 space-y-3">
-              <div className="h-4 bg-gray-200 rounded w-full"></div>
-              <div className="h-4 bg-gray-200 rounded w-[90%]"></div>
-              <div className="h-4 bg-gray-200 rounded w-[75%]"></div>
-            </div>
-          ) : (
-            <p className="mt-7 text-slate-600 text-lg leading-8 max-w-xl">
-              {heroData.description}
-              {city && (
-                <>
-                  {" "}across <strong>{city}</strong>
-                </>
-              )}
-            </p>
-          )}
-
-          {/* Buttons */}
-          <div className="flex flex-col sm:flex-row gap-4 mt-10">
-            {loading ? (
-              <>
-                <div className="animate-pulse h-12 w-44 bg-gray-200 rounded-lg"></div>
-                <div className="animate-pulse h-12 w-36 bg-gray-200 rounded-lg"></div>
-              </>
-            ) : (
-              <>
-                <Link href={makeLink("/items")}>
-                  <button className="primary-btn flex items-center gap-2">
-                    {heroData.button1Text || "Explore Products"}
-                    <ArrowRight size={18} />
-                  </button>
-                </Link>
-
-                <Link href={makeLink("/contact")}>
-                  <button className="secondary-btn">
-                    {heroData.button2Text || "Contact Us"}
-                  </button>
-                </Link>
-              </>
-            )}
-          </div>
-
-          {/* Stats */}
-          <div className="flex flex-wrap gap-8 mt-12">
-
-            <div>
-              <h3 className="text-3xl font-bold text-slate-900">
-                10+
-              </h3>
-              <p className="text-slate-500">
-                Years Experience
-              </p>
-            </div>
-
-            <div>
-              <h3 className="text-3xl font-bold text-slate-900">
-                500+
-              </h3>
-              <p className="text-slate-500">
-                Products Delivered
-              </p>
-            </div>
-
-            <div>
-              <h3 className="text-3xl font-bold text-slate-900">
-                100%
-              </h3>
-              <p className="text-slate-500">
-                Quality Assurance
-              </p>
-            </div>
-
-          </div>
-        </motion.div>
-
-        {/* Right Side */}
-        <motion.div
-          initial={{ opacity: 0, x: 80 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.8 }}
-          className="relative"
-        >
-
-          <div className="glass-card rounded-[40px] p-6 card-shadow">
-            <Image
-              src={CBG}
-              alt="Central Biomedical"
-              width={1200}
-              height={900}
-              priority
-              className="rounded-[28px] object-cover object-[20%_center] h-[350px] sm:h-[450px] lg:h-[550px] w-full"
-            />
-          </div>
-
-          {/* Floating Card 1 */}
-          <div
-            className="absolute top-10 -left-10 bg-white p-5 rounded-3xl shadow-xl hidden lg:flex items-center gap-4"
-            style={{ marginTop: "-27px" }}
+          {/* Left Column: Content (7 cols) */}
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+            className="lg:col-span-7 flex flex-col items-start"
           >
-            <div className="bg-sky-100 p-3 rounded-2xl">
-              <Microscope className="text-sky-700" />
-            </div>
 
-            <div>
-              <h4 className="font-semibold">
-                Modern Labs
-              </h4>
-              <p className="text-sm text-slate-500">
-                Precision Equipment
+            {/* Badge (Dynamic from Admin if available) */}
+            {loading ? (
+              <div className="h-7 w-44 bg-slate-200 animate-pulse rounded-full mb-4" />
+            ) : (heroData.badge || heroData.heroBadge) ? (
+              <div className="inline-flex items-center gap-2 bg-white/90 border border-sky-200 text-sky-700 px-3.5 py-1.5 rounded-full text-xs sm:text-sm font-semibold mb-4 shadow-xs backdrop-blur-sm">
+                <ShieldCheck size={16} className="text-sky-600" />
+                <span>{heroData.badge || heroData.heroBadge}</span>
+              </div>
+            ) : null}
+
+            {/* Title */}
+            {loading ? (
+              <div className="animate-pulse space-y-3 w-full max-w-xl">
+                <div className="h-10 bg-slate-200 rounded-lg w-[90%]"></div>
+                <div className="h-10 bg-slate-200 rounded-lg w-[75%]"></div>
+                <div className="h-10 bg-slate-200 rounded-lg w-[60%]"></div>
+              </div>
+            ) : heroData.title ? (
+              <h1 className="text-3xl sm:text-4xl lg:text-[42px] xl:text-[46px] font-extrabold leading-[1.2] text-slate-900 tracking-tight">
+                {heroData.title}
+                {city && (
+                  <span className="block mt-1 text-2xl sm:text-3xl lg:text-4xl text-sky-700 font-bold">
+                    in {city}
+                  </span>
+                )}
+              </h1>
+            ) : null}
+
+            {/* Description */}
+            {loading ? (
+              <div className="animate-pulse mt-4 space-y-2 w-full max-w-lg">
+                <div className="h-4 bg-slate-200 rounded w-full"></div>
+                <div className="h-4 bg-slate-200 rounded w-[85%]"></div>
+                <div className="h-4 bg-slate-200 rounded w-[70%]"></div>
+              </div>
+            ) : heroData.description ? (
+              <p className="mt-4 sm:mt-5 text-slate-600 text-base sm:text-lg leading-relaxed max-w-xl">
+                {heroData.description}
+                {city && (
+                  <> across <strong className="text-slate-800">{city}</strong></>
+                )}
               </p>
+            ) : null}
+
+            {/* Buttons (100% Dynamic Text from Admin, No Static Text Fallback) */}
+            {loading ? (
+              <div className="flex flex-wrap gap-4 mt-8">
+                <div className="animate-pulse h-12 w-40 bg-slate-200 rounded-xl"></div>
+                <div className="animate-pulse h-12 w-32 bg-slate-200 rounded-xl"></div>
+              </div>
+            ) : (heroData.button1Text || heroData.button2Text) ? (
+              <div className="flex flex-wrap items-center gap-4 mt-7 sm:mt-8">
+                {heroData.button1Text && (
+                  <Link href={makeLink("/items")}>
+                    <button className="primary-btn flex items-center gap-2 group shadow-md shadow-sky-600/20">
+                      <span>{heroData.button1Text}</span>
+                      <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
+                    </button>
+                  </Link>
+                )}
+
+                {heroData.button2Text && (
+                  <Link href={makeLink("/contact")}>
+                    <button className="secondary-btn shadow-xs">
+                      {heroData.button2Text}
+                    </button>
+                  </Link>
+                )}
+              </div>
+            ) : null}
+
+            {/* Compact Trust Metrics / Stats Strip */}
+            <div className="grid grid-cols-3 gap-4 sm:gap-6 pt-8 mt-8 sm:mt-10 border-t border-slate-200/80 w-full max-w-lg">
+              <div>
+                <div className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+                  10<span className="text-sky-600">+</span>
+                </div>
+                <p className="text-xs sm:text-sm text-slate-500 mt-0.5 font-medium">
+                  Years Experience
+                </p>
+              </div>
+
+              <div>
+                <div className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+                  500<span className="text-sky-600">+</span>
+                </div>
+                <p className="text-xs sm:text-sm text-slate-500 mt-0.5 font-medium">
+                  Products Delivered
+                </p>
+              </div>
+
+              <div>
+                <div className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+                  100<span className="text-sky-600">%</span>
+                </div>
+                <p className="text-xs sm:text-sm text-slate-500 mt-0.5 font-medium">
+                  Quality Assured
+                </p>
+              </div>
             </div>
-          </div>
 
-          {/* Floating Card 2 */}
-          <div className="absolute bottom-10 -right-8 bg-white p-5 rounded-3xl shadow-xl hidden lg:flex items-center gap-4">
-            <div className="bg-teal-100 p-3 rounded-2xl">
-              <BadgeCheck className="text-teal-700" />
+          </motion.div>
+
+          {/* Right Column: Visual Showcase (5 cols) */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.96 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.7, delay: 0.1 }}
+            className="lg:col-span-5 relative"
+          >
+            {/* Main Showcase Image Frame */}
+            <div className="relative rounded-[32px] overflow-hidden bg-white p-3 sm:p-4 border border-slate-200/80 shadow-[0_20px_50px_rgba(15,108,189,0.12)]">
+              <div className="relative overflow-hidden rounded-[24px] bg-slate-100">
+                <Image
+                  src={CBG}
+                  alt="Central Biomedicals Diagnostic & Laboratory Systems"
+                  width={900}
+                  height={680}
+                  priority
+                  className="w-full h-[280px] sm:h-[350px] lg:h-[400px] object-cover object-[20%_center] hover:scale-102 transition-transform duration-500"
+                />
+              </div>
+
+              {/* Floating Status Pill 1 (Top Left) */}
+              <div className="absolute top-6 left-6 bg-white/95 backdrop-blur-md px-3.5 py-2 rounded-2xl shadow-lg border border-slate-100 flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-sky-100 text-sky-700 flex items-center justify-center shrink-0">
+                  <Microscope size={18} />
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-slate-900 leading-tight">Modern Labs</p>
+                  <p className="text-[11px] text-slate-500 leading-tight">Precision Tested</p>
+                </div>
+              </div>
+
+              {/* Floating Status Pill 2 (Bottom Right) */}
+              <div className="absolute bottom-6 right-6 bg-white/95 backdrop-blur-md px-3.5 py-2 rounded-2xl shadow-lg border border-slate-100 flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-teal-100 text-teal-700 flex items-center justify-center shrink-0">
+                  <CheckCircle2 size={18} />
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-slate-900 leading-tight">Certified Quality</p>
+                  <p className="text-[11px] text-slate-500 leading-tight">ISO Compliant</p>
+                </div>
+              </div>
             </div>
+          </motion.div>
 
-            <div>
-              <h4 className="font-semibold">
-                Trusted Quality
-              </h4>
-              <p className="text-sm text-slate-500">
-                Certified Solutions
-              </p>
-            </div>
-          </div>
-
-        </motion.div>
-
+        </div>
       </div>
     </section>
   );

@@ -17,15 +17,8 @@ import {
     FaFilePdf,
 } from "react-icons/fa";
 
-import {
-    doc,
-    getDoc,
-    addDoc,
-    collection,
-} from "firebase/firestore";
-
-import { db } from "@/lib/firebase";
-import { fetchFullCatalog } from "@/lib/data-fetcher";
+import { fetchFullCatalog, fetchContactData } from "@/lib/data-fetcher";
+import { parseContactInfo } from "@/lib/contact-parser";
 import { Download } from "lucide-react";
 
 // ============================================================
@@ -82,10 +75,11 @@ export default function ProductDetails({ slug, district, product: initialProduct
     const [brochureImage, setBrochureImage] = useState("");
 
     const [contactData, setContactData] = useState({
-        phone: "+91 9983123469\n+91 9983333489",
-        email: "rajbiosis@yahoo.in",
-        address:
-            "F-4, 1st Floor, Plot No. 16, D-Block Tagor Nagar, on Ajmer-Delhi, 200 Feet Bypass Rd, Jaipur, Rajasthan 302021",
+        phones: [],
+        emails: [],
+        address: "",
+        workingHours: "",
+        whatsappPhone: "",
     });
 
     const pathname = usePathname();
@@ -138,53 +132,9 @@ export default function ProductDetails({ slug, district, product: initialProduct
 
         const loadContact = async () => {
             try {
-                const snap = await getDoc(
-                    doc(
-                        db,
-                        "websites",
-                        "centralbiomedicalcom",
-                        "pages",
-                        "contact"
-                    )
-                );
-
-                if (snap.exists()) {
-                    const info =
-                        snap.data().contactInfo || [];
-
-                    const phoneVal =
-                        info.find(
-                            (x) =>
-                                x.label ===
-                                "Phone Number"
-                        )?.value || "";
-
-                    const emailVal =
-                        info.find(
-                            (x) =>
-                                x.label ===
-                                "Email Address"
-                        )?.value || "";
-
-                    const addressVal =
-                        info.find(
-                            (x) =>
-                                x.label ===
-                                "Office Address"
-                        )?.value || "";
-
-                    setContactData({
-                        phone:
-                            phoneVal ||
-                            "+91 9983123469\n+91 9983333489",
-                        email:
-                            emailVal ||
-                            "rajbiosis@yahoo.in",
-                        address:
-                            addressVal ||
-                            "F-4, 1st Floor, Plot No. 16, D-Block Tagor Nagar, on Ajmer-Delhi, 200 Feet Bypass Rd, Jaipur, Rajasthan 302021",
-                    });
-                }
+                const data = await fetchContactData();
+                const parsed = parseContactInfo(data?.contactInfo || (Array.isArray(data) ? data : []));
+                setContactData(parsed);
             } catch (err) {
                 console.error(
                     "Error loading contact details:",
@@ -430,35 +380,34 @@ export default function ProductDetails({ slug, district, product: initialProduct
             try {
                 setSubmitting(true);
 
-                await addDoc(
-                    collection(
-                        db,
-                        "websitesQueries",
-                        "centralbiomedicalcom",
-                        "productQueries"
-                    ),
-                    {
-                        ...form,
-                        productName:
-                            product.title,
-                        productSlug:
-                            product.slug,
-                        brand:
-                            product.brand || "",
-                        model:
-                            product.model || "",
-                        createdAt:
-                            new Date(),
-                    }
-                );
-
-                toast.success("Your enquiry has been submitted successfully.");
-
-                setForm({
-                    name: "",
-                    email: "",
-                    phone: "",
+                const res = await fetch("/api/product-query", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({
+                        name: form.name,
+                        email: form.email,
+                        phone: form.phone,
+                        productName: product.title,
+                        productSlug: product.slug,
+                        brand: product.brand || "",
+                        model: product.model || "",
+                    }),
                 });
+
+                const data = await res.json();
+
+                if (res.ok && data.success !== false) {
+                    toast.success("Your enquiry has been submitted successfully.");
+                    setForm({
+                        name: "",
+                        email: "",
+                        phone: "",
+                    });
+                } else {
+                    toast.error(data.error || "Something went wrong");
+                }
             } catch (error) {
                 console.error("Error submitting query:", error);
                 toast.error("Something went wrong");
@@ -557,16 +506,15 @@ export default function ProductDetails({ slug, district, product: initialProduct
     const handleWhatsapp =
         () => {
             const shareText =
-                `🔬 ${product?.title}
+                `🔬 ${product?.title}\n\n${product?.desc || product?.description || ""}\n\n🌐 ${window.location.href}`;
 
-${product?.desc}
-
-🌐 ${window.location.href}`;
+            const cleanPhone = contactData.whatsappPhone || (contactData.phones?.[0]?.replace(/[^0-9]/g, "") || "");
+            const url = cleanPhone
+                ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(shareText)}`
+                : `https://wa.me/?text=${encodeURIComponent(shareText)}`;
 
             window.open(
-                `https://wa.me/?text=${encodeURIComponent(
-                    shareText
-                )}`,
+                url,
                 "_blank"
             );
         };
@@ -1706,18 +1654,36 @@ ${product?.desc}
                         lineHeight: "1.5",
                     }}
                 >
+                    {contactData.address && (
+                        <p
+                            style={{
+                                margin: "0",
+                                fontWeight: "600",
+                            }}
+                        >
+                            Office Address: {contactData.address}
+                        </p>
+                    )}
 
-                    <p
-                        style={{
-                            margin: "0",
-                            fontWeight: "600",
-                        }}
-                    >
-                        Office Address:{" "}
-                        {
-                            contactData.address
-                        }
-                    </p>
+                    {contactData.phones?.length > 0 && (
+                        <p
+                            style={{
+                                margin: "3px 0 0 0",
+                            }}
+                        >
+                            Contact: {contactData.phones.join(" | ")}
+                        </p>
+                    )}
+
+                    {contactData.emails?.length > 0 && (
+                        <p
+                            style={{
+                                margin: "3px 0 0 0",
+                            }}
+                        >
+                            Email: {contactData.emails.join(" | ")}
+                        </p>
+                    )}
 
                     <p
                         style={{
@@ -1725,11 +1691,9 @@ ${product?.desc}
                                 "5px 0 0 0",
                         }}
                     >
-                        © 2026 Raj Biosis. All rights reserved. Premium diagnostics and biomedical solutions.
+                        © 2026 Central Biomedicals. All rights reserved. Premium diagnostics and biomedical solutions.
                     </p>
-
                 </div>
-
             </div>
         </section>
     );
