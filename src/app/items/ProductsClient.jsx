@@ -166,7 +166,9 @@ export default function ProductsClient({ initialProducts = [], district = null, 
     setProducts(initialProducts);
   }, [initialProducts]);
 
-  // Real-time zero-delay live sync (Window Focus, Tab Visibility, and 3-second live sync)
+  // Keep server-rendered products stable. Refresh only when the tab returns to
+  // the foreground; do not poll every few seconds because transient/empty API
+  // responses were replacing the visible catalog and making products disappear.
   useEffect(() => {
     let isMounted = true;
     let isFetching = false;
@@ -174,50 +176,60 @@ export default function ProductsClient({ initialProducts = [], district = null, 
     const syncCatalog = async () => {
       if (isFetching) return;
       isFetching = true;
-      try {
-        const res = await fetch(`/api/catalog?t=${Date.now()}`, {
-          cache: "no-store",
-          headers: {
-            "Pragma": "no-cache",
-            "Cache-Control": "no-cache",
-          },
-        });
 
-        if (res.ok) {
-          const data = await res.json();
-          const freshList = Array.isArray(data) ? data : (data.products || []);
-          if (isMounted) {
-            setProducts(freshList);
-          }
+      try {
+        const res = await fetch("/api/catalog", {
+          cache: "no-store",
+          headers: { "Cache-Control": "no-cache", Pragma: "no-cache" },
+        });
+        if (!res.ok) return;
+
+        const data = await res.json();
+        // The API's canonical field is categoryProducts; support products as
+        // a backward-compatible fallback.
+        const freshList = Array.isArray(data)
+          ? data
+          : Array.isArray(data?.categoryProducts)
+            ? data.categoryProducts
+            : Array.isArray(data?.products)
+              ? data.products
+              : null;
+
+        // Ignore malformed/temporarily empty responses when we already have
+        // server-rendered products, so the catalog never blanks out.
+        if (!Array.isArray(freshList)) return;
+        if (freshList.length === 0 && products.length > 0) return;
+
+        if (isMounted) {
+          setProducts((current) => {
+            // Avoid unnecessary rerenders if the catalog hasn't changed.
+            const currentKey = current.map((p) => `${p?.uid || p?.id || p?.slug}:${p?.updatedAt || p?.title || ""}`).join("|");
+            const freshKey = freshList.map((p) => `${p?.uid || p?.id || p?.slug}:${p?.updatedAt || p?.title || ""}`).join("|");
+            return currentKey === freshKey ? current : freshList;
+          });
         }
       } catch (err) {
-        // silent fail on network interruption
+        // Keep the last good catalog visible during temporary network errors.
+        console.warn("[ProductsClient] Catalog refresh skipped:", err);
       } finally {
         isFetching = false;
       }
     };
 
-    // Immediate sync on tab / window focus
     const handleFocus = () => syncCatalog();
     const handleVisibility = () => {
-      if (document.visibilityState === "visible") {
-        syncCatalog();
-      }
+      if (document.visibilityState === "visible") syncCatalog();
     };
 
     window.addEventListener("focus", handleFocus);
     document.addEventListener("visibilitychange", handleVisibility);
 
-    // 3-second live polling interval
-    const intervalId = setInterval(syncCatalog, 3000);
-
     return () => {
       isMounted = false;
-      clearInterval(intervalId);
       window.removeEventListener("focus", handleFocus);
       document.removeEventListener("visibilitychange", handleVisibility);
     };
-  }, []);
+  }, [products.length]);
 
   // Debounce search term updates
   useEffect(() => {
